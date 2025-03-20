@@ -1,0 +1,62 @@
+## Unity ##
+
+*.cs diff=csharp text
+*.cginc text
+*.shader text
+
+*.mat                     merge=unityyamlmerge eol=lf
+*.anim                     merge=unityyamlmerge eol=lf
+*.unity                 merge=unityyamlmerge eol=lf
+*.prefab                 merge=unityyamlmerge eol=lf
+*.physicsMaterial2D     merge=unityyamlmerge eol=lf
+*.physicMaterial         merge=unityyamlmerge eol=lf
+*.physicmaterial         merge=unityyamlmerge eol=lf
+*.asset                 merge=unityyamlmerge eol=lf
+*.meta                     merge=unityyamlmerge eol=lf
+*.controller            merge=unityyamlmerge eol=lf
+
+*.compute                merge=unityyamlmerge eol=lf
+*.txt                    merge=unityyamlmerge eol=lf
+*.htm                    merge=unityyamlmerge eol=lf
+*.html                    merge=unityyamlmerge eol=lf
+*.xml                    merge=unityyamlmerge eol=lf
+*.XML                    merge=unityyamlmerge eol=lf
+*.js                    merge=unityyamlmerge eol=lf
+*.flare                    merge=unityyamlmerge eol=lf
+*.giparams                merge=unityyamlmerge eol=lf
+*.playable                merge=unityyamlmerge eol=lf
+*.guiskin                merge=unityyamlmerge eol=lf
+*.GUISkin                merge=unityyamlmerge eol=lf
+*.json                    merge=unityyamlmerge eol=lf
+*.asmdef                merge=unityyamlmerge eol=lf
+*.csv                    merge=unityyamlmerge eol=lf
+*.shader_backup            merge=unityyamlmerge eol=lf
+*.sbs                    merge=unityyamlmerge eol=lf
+*.mixer                    merge=unityyamlmerge eol=lf
+*.overrideController    merge=unityyamlmerge eol=lf
+*.tps                    merge=unityyamlmerge eol=lf
+*.tpsheet                merge=unityyamlmerge eol=lf
+*.fontsettings            merge=unityyamlmerge eol=lf
+*.ms                    merge=unityyamlmerge eol=lf
+*.ini                    merge=unityyamlmerge eol=lf
+*.orig                     merge=unityyamlmerge eol=lf
+*.xgen                     merge=unityyamlmerge eol=lf
+*.bat                     merge=unityyamlmerge eol=lf
+*.mon                     merge=unityyamlmerge eol=lf
+*.h                        merge=unityyamlmerge eol=lf
+*.dict                    merge=unityyamlmerge eol=lf
+*.params                merge=unityyamlmerge eol=lf
+*.cfg                    merge=unityyamlmerge eol=lf
+*.pkan                    merge=unityyamlmerge eol=lf
+*.pkfx                    merge=unityyamlmerge eol=lf
+*.pkat                    merge=unityyamlmerge eol=lf
+*.url                    merge=unityyamlmerge eol=lf
+*.css                     merge=unityyamlmerge eol=lf
+*.terrainlayer            merge=unityyamlmerge eol=lf
+*.er3d                    merge=unityyamlmerge eol=lf
+*-[Tt]errain.asset -unityyaml lfs
+*-[Nn]av[Mm]esh.asset -unityyaml lfs
+ 
+
+
+
