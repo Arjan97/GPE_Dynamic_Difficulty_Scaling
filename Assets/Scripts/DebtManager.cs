@@ -1,5 +1,6 @@
 using UnityEngine;
 using System;
+using UnityEngine.Events;
 
 public class DebtManager : MonoBehaviour
 {
@@ -13,9 +14,12 @@ public class DebtManager : MonoBehaviour
     public float maxDebt = 100f;
     [Tooltip("Rate at which debt increases (Euros per second).")]
     public float debtIncreaseRate = 1f;
-
+    [System.Serializable]
+    public class FloatEvent : UnityEvent<float> { }
     // Event raised when the debt reaches the max threshold.
     public static event Action OnGameOver;
+    // This UnityEvent passes a float (the current debt) to listeners.
+    public FloatEvent OnDebtChanged;
 
     void Awake()
     {
@@ -42,6 +46,8 @@ public class DebtManager : MonoBehaviour
             // Optionally disable further accumulation.
             enabled = false;
         }
+        // Fire the event so any listeners (UI, etc.) update
+        OnDebtChanged?.Invoke(currentDebt);
     }
 
     /// <summary>
@@ -55,5 +61,7 @@ public class DebtManager : MonoBehaviour
         {
             currentDebt = 0f;
         }
+        // Fire the event to update UI
+        OnDebtChanged?.Invoke(currentDebt);
     }
 }
