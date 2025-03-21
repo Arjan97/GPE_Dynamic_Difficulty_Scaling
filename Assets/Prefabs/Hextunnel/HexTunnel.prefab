@@ -124,6 +124,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   spawnPrefabs:
   - {fileID: 4031312962638697335, guid: 7e277cbdcad9d7a4b83d45783c5f0f1f, type: 3}
+  - {fileID: 3848208711572737502, guid: ef08da84109a6634fb4e82906aaddff4, type: 3}
   minSpawnCount: 1
   maxSpawnCount: 5
   spawnChance: 0.8
@@ -292,6 +293,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   spawnPrefabs:
   - {fileID: 4031312962638697335, guid: 7e277cbdcad9d7a4b83d45783c5f0f1f, type: 3}
+  - {fileID: 3848208711572737502, guid: ef08da84109a6634fb4e82906aaddff4, type: 3}
   minSpawnCount: 1
   maxSpawnCount: 5
   spawnChance: 0.8
@@ -420,6 +422,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   spawnPrefabs:
   - {fileID: 4031312962638697335, guid: 7e277cbdcad9d7a4b83d45783c5f0f1f, type: 3}
+  - {fileID: 3848208711572737502, guid: ef08da84109a6634fb4e82906aaddff4, type: 3}
   minSpawnCount: 1
   maxSpawnCount: 5
   spawnChance: 0.8
@@ -548,6 +551,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   spawnPrefabs:
   - {fileID: 4031312962638697335, guid: 7e277cbdcad9d7a4b83d45783c5f0f1f, type: 3}
+  - {fileID: 3848208711572737502, guid: ef08da84109a6634fb4e82906aaddff4, type: 3}
   minSpawnCount: 1
   maxSpawnCount: 5
   spawnChance: 0.8
@@ -676,6 +680,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   spawnPrefabs:
   - {fileID: 4031312962638697335, guid: 7e277cbdcad9d7a4b83d45783c5f0f1f, type: 3}
+  - {fileID: 3848208711572737502, guid: ef08da84109a6634fb4e82906aaddff4, type: 3}
   minSpawnCount: 1
   maxSpawnCount: 5
   spawnChance: 0.8
@@ -925,6 +930,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   spawnPrefabs:
   - {fileID: 4031312962638697335, guid: 7e277cbdcad9d7a4b83d45783c5f0f1f, type: 3}
+  - {fileID: 3848208711572737502, guid: ef08da84109a6634fb4e82906aaddff4, type: 3}
   minSpawnCount: 1
   maxSpawnCount: 5
   spawnChance: 0.8
@@ -1053,6 +1059,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   spawnPrefabs:
   - {fileID: 4031312962638697335, guid: 7e277cbdcad9d7a4b83d45783c5f0f1f, type: 3}
+  - {fileID: 3848208711572737502, guid: ef08da84109a6634fb4e82906aaddff4, type: 3}
   minSpawnCount: 1
   maxSpawnCount: 5
   spawnChance: 0.8
@@ -1181,6 +1188,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   spawnPrefabs:
   - {fileID: 4031312962638697335, guid: 7e277cbdcad9d7a4b83d45783c5f0f1f, type: 3}
+  - {fileID: 3848208711572737502, guid: ef08da84109a6634fb4e82906aaddff4, type: 3}
   minSpawnCount: 1
   maxSpawnCount: 5
   spawnChance: 0.8
