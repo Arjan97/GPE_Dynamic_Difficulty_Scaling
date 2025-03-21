@@ -36,16 +36,20 @@ public class ChunkManager : MonoBehaviour
 
     void Start()
     {
+        player = GameObject.FindGameObjectWithTag("Player").transform;
         // Spawn the initial chunks. These chunks will always have all children enabled.
         for (int i = 0; i < initialChunks; i++)
         {
             GameObject chunk = SpawnChunk(false);
             activeChunks.Add(chunk);
         }
+        LevelController.OnGameOverEvent += EndGame;
     }
 
     void Update()
     {
+        if (player == null)
+            return;
         // When the player has passed the first chunk by the threshold, recycle it.
         if (activeChunks.Count > 0 && player.position.z - activeChunks[0].transform.position.z > spawnDespawnThreshold)
         {
@@ -80,7 +84,26 @@ public class ChunkManager : MonoBehaviour
 
         return newChunk;
     }
+    void EndGame()
+    {
+        player = GameObject.FindGameObjectWithTag("Player").transform;
+    }
+    void ResetGame()
+    {
+        nextSpawnZ = 0f;
+        foreach (GameObject chunk in activeChunks)
+        {
+            chunk.SetActive(false);
+            chunkPool.Enqueue(chunk);
+        }
+        activeChunks.Clear();
 
+        for (int i = 0; i < initialChunks; i++)
+        {
+            GameObject chunk = SpawnChunk(false);
+            activeChunks.Add(chunk);
+        }
+    }
     // Retrieves a chunk from the pool or instantiates one if the pool is empty.
     GameObject GetChunkFromPool()
     {
