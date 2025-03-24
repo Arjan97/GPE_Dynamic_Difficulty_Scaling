@@ -1,187 +1,133 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-// A simple helper component to mark initial chunks.
-public class ChunkInfo : MonoBehaviour
-{
-    public bool isInitialChunk = false;
-}
-
 public class ChunkManager : MonoBehaviour
 {
     [Header("Chunk Settings")]
-    public GameObject[] chunkPrefabs;    // Array of different chunk prefabs for variety
-    public float chunkLength = 20f;        // Length of each chunk segment (along Z-axis)
+    [SerializeField] private GameObject chunkPrefab;
+    [SerializeField] private int initialChunks = 3;
 
     [Header("Player Settings")]
-    public Transform player;               // Reference to the player's transform
-    public float spawnDistance = 50f;      // (Not used with recycling but kept for configuration)
+    [SerializeField] private Transform player;
 
-    [Header("Initial Setup")]
-    public int initialChunks = 6;          // Total number of chunks to be active (e.g., 6)
-    public int minDisabledChildren = 2;    // Minimum number of disabled children per chunk
-    public int maxDisabledChildren = 4;    // Maximum number of disabled children per chunk
-    [Range(0f, 1f)]
-    public float disableChance = 0.5f;     // Probability of disabling each child
+    [Header("Recycle Settings")]
+    [Tooltip("Extra distance beyond the chunk’s right edge before recycling.")]
+    [SerializeField] private float recycleThreshold = 5f;
 
-    [Header("Spawning Threshold")]
-    public float spawnDespawnThreshold = 20f; // Distance beyond a chunk at which it should be recycled
-
-    // Pools for object pooling
-    private Queue<GameObject> chunkPool = new Queue<GameObject>();
-
-    // Tracking active chunks and their spawned objects
-    private float nextSpawnZ = 0f;
+    // Active chunks in order along the X-axis
     private List<GameObject> activeChunks = new List<GameObject>();
+
+    // Measured bounding box data for the chunk prefab
+    private float chunkWidth;  // Total width in X
+    private float chunkMinX;   // Offset from pivot to left edge (bounds.min.x)
 
     void Start()
     {
-        player = GameObject.FindGameObjectWithTag("Player").transform;
-        // Spawn the initial chunks. These chunks will always have all children enabled.
+        if (player == null)
+            player = GameObject.FindGameObjectWithTag("Player").transform;
+
+        // Measure the prefab's bounding box to get width and left offset.
+        Bounds bounds = CalculatePrefabBounds(chunkPrefab);
+        chunkWidth = bounds.size.x;
+        chunkMinX = bounds.min.x;
+
+        // Spawn initial chunks in a row.
         for (int i = 0; i < initialChunks; i++)
         {
-            GameObject chunk = SpawnChunk(false);
-            activeChunks.Add(chunk);
+            SpawnChunk();
         }
-        LevelController.OnGameOverEvent += EndGame;
     }
 
     void Update()
     {
-        if (player == null)
+        if (activeChunks.Count == 0 || player == null)
             return;
-        // When the player has passed the first chunk by the threshold, recycle it.
-        if (activeChunks.Count > 0 && player.position.z - activeChunks[0].transform.position.z > spawnDespawnThreshold)
+
+        // Get the first chunk (the one to be recycled)
+        GameObject firstChunk = activeChunks[0];
+
+        // Calculate its left and right edges in world space.
+        // Left edge = transform.position.x + chunkMinX
+        float firstChunkLeftEdge = firstChunk.transform.position.x + chunkMinX;
+        float firstChunkRightEdge = firstChunkLeftEdge + chunkWidth;
+
+        // When the player has passed beyond the first chunk's right edge (plus buffer), recycle it.
+        if (player.position.x > firstChunkRightEdge + recycleThreshold)
         {
-            RecycleChunk(activeChunks[0]);
+            RecycleChunk(firstChunk);
         }
     }
 
-    // Spawns a new chunk. 'randomise' controls whether child objects should be randomized.
-    GameObject SpawnChunk(bool randomise)
+    /// <summary>
+    /// Spawns a new chunk at the end of the current sequence.
+    /// </summary>
+    private void SpawnChunk()
     {
-        GameObject newChunk = GetChunkFromPool();
-        newChunk.transform.position = new Vector3(0f, 0f, nextSpawnZ);
-        newChunk.SetActive(true);
+        GameObject chunk = Instantiate(chunkPrefab);
+        float posX = 0f;
 
-        // Add or get the ChunkInfo component to mark whether this is an initial chunk.
-        ChunkInfo chunkInfo = newChunk.GetComponent<ChunkInfo>();
-        if (chunkInfo == null)
-            chunkInfo = newChunk.AddComponent<ChunkInfo>();
-
-        // If not randomising, mark this as an initial chunk.
-        chunkInfo.isInitialChunk = !randomise;
-
-        nextSpawnZ += chunkLength;
-        if (randomise)
-            RandomizeChunkChildren(newChunk);
-
-        ChunkObjectSpawner[] spawners = newChunk.GetComponentsInChildren<ChunkObjectSpawner>();
-        foreach (ChunkObjectSpawner spawner in spawners)
+        if (activeChunks.Count == 0)
         {
-            spawner.SpawnObjects();
-        }
-
-        return newChunk;
-    }
-    void EndGame()
-    {
-        player = GameObject.FindGameObjectWithTag("Player").transform;
-    }
-    void ResetGame()
-    {
-        nextSpawnZ = 0f;
-        foreach (GameObject chunk in activeChunks)
-        {
-            chunk.SetActive(false);
-            chunkPool.Enqueue(chunk);
-        }
-        activeChunks.Clear();
-
-        for (int i = 0; i < initialChunks; i++)
-        {
-            GameObject chunk = SpawnChunk(false);
-            activeChunks.Add(chunk);
-        }
-    }
-    // Retrieves a chunk from the pool or instantiates one if the pool is empty.
-    GameObject GetChunkFromPool()
-    {
-        if (chunkPool.Count > 0)
-        {
-            return chunkPool.Dequeue();
+            // For the first chunk, position it so its left edge is at x = 0.
+            posX = -chunkMinX;
         }
         else
         {
-            int index = Random.Range(0, chunkPrefabs.Length);
-            return Instantiate(chunkPrefabs[index]);
-        }
-    }
-
-    void RandomizeChunkChildren(GameObject chunk)
-    {
-        Transform[] children = chunk.GetComponentsInChildren<Transform>(true);
-        List<Transform> selectableChildren = new List<Transform>();
-
-        foreach (Transform child in children)
-        {
-            if (child != chunk.transform && child.name != "GroundCheck")
-            {
-                selectableChildren.Add(child);
-            }
+            // For subsequent chunks, position it immediately after the last chunk.
+            GameObject lastChunk = activeChunks[activeChunks.Count - 1];
+            // Calculate the right edge of the last chunk:
+            float lastChunkRightEdge = lastChunk.transform.position.x + chunkMinX + chunkWidth;
+            // Position the new chunk so that its left edge is exactly at lastChunkRightEdge.
+            posX = lastChunkRightEdge - chunkMinX;
         }
 
-        int numToDisable = Random.Range(minDisabledChildren, maxDisabledChildren + 1);
-        numToDisable = Mathf.Min(numToDisable, selectableChildren.Count); 
-
-        int disabledCount = 0;
-        foreach (Transform child in selectableChildren)
-        {
-            if (disabledCount >= numToDisable)
-                break;
-
-            if (Random.value < disableChance && child.gameObject.activeSelf)
-            {
-                child.gameObject.SetActive(false);
-                disabledCount++;
-            }
-        }
-    }
-
-
-    void RecycleChunk(GameObject chunk)
-    {
-        chunk.transform.position = new Vector3(0f, 0f, nextSpawnZ);
-        chunk.SetActive(true); // Ensure the chunk is reactivated before modifications
-
-        EnableAllChunkChildren(chunk); // Ensure all children are enabled first
-
-        ChunkInfo chunkInfo = chunk.GetComponent<ChunkInfo>();
-        if (chunkInfo != null && chunkInfo.isInitialChunk)
-        {
-            chunkInfo.isInitialChunk = false;
-        }
-        else
-        {
-            RandomizeChunkChildren(chunk); // Only randomize after enabling
-        }
-
-        activeChunks.RemoveAt(0);
+        chunk.transform.position = new Vector3(posX, 0f, 0f);
         activeChunks.Add(chunk);
-        nextSpawnZ += chunkLength;
     }
 
-    // Enables all children (excluding the chunk root, "GroundCheck", and objects tagged "ChunkObject").
-    void EnableAllChunkChildren(GameObject chunk)
+    /// <summary>
+    /// Recycles the given chunk by repositioning it immediately after the last chunk.
+    /// </summary>
+    private void RecycleChunk(GameObject chunk)
     {
-        Transform[] children = chunk.GetComponentsInChildren<Transform>(true); 
-        foreach (Transform child in children)
-        {
-            if (child != chunk.transform && child.name != "GroundCheck")
-            {
-                child.gameObject.SetActive(true);
-            }
-        }
+        // Remove the chunk from the beginning of the list.
+        activeChunks.RemoveAt(0);
+
+        // Get the last chunk in the list.
+        GameObject lastChunk = activeChunks[activeChunks.Count - 1];
+        float lastChunkRightEdge = lastChunk.transform.position.x + chunkMinX + chunkWidth;
+
+        // Reposition the recycled chunk so its left edge aligns with the last chunk's right edge.
+        float newPosX = lastChunkRightEdge - chunkMinX;
+        chunk.transform.position = new Vector3(newPosX, 0f, 0f);
+
+        // Add it to the end of the list.
+        activeChunks.Add(chunk);
     }
 
+    /// <summary>
+    /// Calculates the combined bounding box of all Renderer components in the prefab.
+    /// </summary>
+    private Bounds CalculatePrefabBounds(GameObject prefab)
+    {
+        // Instantiate a temporary copy.
+        GameObject temp = Instantiate(prefab, Vector3.zero, Quaternion.identity);
+        temp.SetActive(false);
+
+        Renderer[] renderers = temp.GetComponentsInChildren<Renderer>();
+        if (renderers.Length == 0)
+        {
+            Destroy(temp);
+            return new Bounds(Vector3.zero, Vector3.zero);
+        }
+
+        Bounds combined = renderers[0].bounds;
+        for (int i = 1; i < renderers.Length; i++)
+        {
+            combined.Encapsulate(renderers[i].bounds);
+        }
+
+        Destroy(temp);
+        return combined;
+    }
 }

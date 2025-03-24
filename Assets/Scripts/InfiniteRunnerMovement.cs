@@ -1,3 +1,4 @@
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -5,29 +6,32 @@ using UnityEngine.InputSystem;
 public class InfiniteRunnerMovement : MonoBehaviour
 {
     [Header("Movement Settings")]
-    public float forwardSpeed = 5f;       // Constant forward movement (Z-axis)
-    public float horizontalSpeed = 5f;    // Left/right movement speed
-    public float rotationSpeed = 10f;     // Speed at which player aligns to new ground
+    public float forwardSpeed = 5f;    // Constant forward movement (now along X-axis)
+    public float horizontalSpeed = 5f; // Input-based rotation speed for the tunnel
+    public float rotationSpeed = 10f;  // Speed at which player aligns to new ground
 
     [Header("Jump Settings")]
-    public float jumpForce = 7f;          // Force applied upward when jumping
-    public Transform groundCheck;         // Transform with SphereCollider for ground detection
-    public LayerMask groundLayer;         // Layer(s) considered ground
+    public float jumpForce = 7f;       // Force applied upward when jumping
+    public Transform groundCheck;      // Transform with SphereCollider for ground detection
+    public LayerMask groundLayer;      // Layer(s) considered ground
 
     private Rigidbody rb;
     private Vector2 moveInput;
-    private Transform lastGroundHit;      // Last ground the player touched
     private bool isGrounded;
     private SphereCollider groundChecker;
-
-    private GameObject hexTunnel;
-
+    private Transform lastGroundHit;
+    private PlayerAnimatorController animController;
 
     void Awake()
     {
         rb = GetComponent<Rigidbody>();
         rb.freezeRotation = true;
         groundChecker = groundCheck.GetComponent<SphereCollider>();
+    }
+
+    private void Start()
+    {
+        animController = GameObject.FindGameObjectWithTag("PlayerAnim").GetComponent<PlayerAnimatorController>();
     }
 
     void Update()
@@ -37,14 +41,17 @@ public class InfiniteRunnerMovement : MonoBehaviour
 
     void FixedUpdate()
     {
-        MovePlayer();
+        MoveTunnel();
     }
 
     void CheckGround()
     {
-        Collider[] colliders = new Collider[3]; // Small array to prevent GC allocations
+        Collider[] colliders = new Collider[3]; // small array to prevent GC allocations
         int hitCount = Physics.OverlapSphereNonAlloc(groundCheck.position, groundChecker.radius, colliders, groundLayer);
         isGrounded = false;
+
+        animController?.SetGroundedState(false);
+
         for (int i = 0; i < hitCount; i++)
         {
             if (colliders[i] != null && colliders[i].gameObject != gameObject) // Ignore self
@@ -52,19 +59,20 @@ public class InfiniteRunnerMovement : MonoBehaviour
                 isGrounded = true;
                 lastGroundHit = colliders[i].transform;
                 AlignToGround(colliders[i].transform.up);
+                animController?.SetGroundedState(true);
                 break;
             }
         }
     }
 
-    // Aligns the player's up vector with the ground normal while smoothly matching the platform's roll (Z rotation)
+    // Aligns the player's up vector with the ground normal,
+    // while smoothly matching the platform's roll if needed.
     void AlignToGround(Vector3 groundNormal)
     {
         // Compute a rotation that aligns the player's up to the ground normal.
         Quaternion upAlignedRotation = Quaternion.FromToRotation(transform.up, groundNormal) * transform.rotation;
 
-        // Determine the target Z rotation (roll) from the ground platform.
-        // If lastGroundHit is valid, use its Z Euler angle; otherwise, maintain current roll.
+        // Determine the target "roll" from the ground platform�s local rotation, if needed.
         float targetZRotation = lastGroundHit != null ? lastGroundHit.eulerAngles.z : transform.eulerAngles.z;
 
         // Get the Euler angles from the up-aligned rotation.
@@ -78,29 +86,36 @@ public class InfiniteRunnerMovement : MonoBehaviour
         transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
     }
 
-    void MovePlayer()
+    void MoveTunnel()
     {
-        // Move player forward continuously.
-        Vector3 forwardMovement = transform.forward * forwardSpeed;
-        // Preserve current vertical velocity.
+        /* Instead of moving player forward ill move the tunnel towards the player 
+        // Move the player forward along X (transform.right).
+        Vector3 forwardMovement = transform.right * forwardSpeed;
+
+        // Preserve vertical velocity, zero out Z, and apply forward X velocity.
         Vector3 currentVelocity = rb.linearVelocity;
-        // Set X to 0 (if no lateral movement is applied to the player) and update forward (Z) velocity.
-        currentVelocity = new Vector3(0, currentVelocity.y, forwardMovement.z);
+        currentVelocity.x = forwardMovement.x;  // X is forward
+        currentVelocity.z = 0f;                 // No movement on Z
         rb.linearVelocity = currentVelocity;
+        */
 
         // Rotate tunnel objects based on horizontal input.
         GameObject[] tunnels = GameObject.FindGameObjectsWithTag("Center");
         if (tunnels != null && tunnels.Length > 0)
         {
-            float rotationAmount = moveInput.x * horizontalSpeed * Time.deltaTime;
+            // Horizontal input is moveInput.x; 
+            // negative sign can be adjusted if rotation is reversed from what you want.
+            float rotationAmount = -moveInput.x * horizontalSpeed * Time.deltaTime;
+
             foreach (GameObject tunnel in tunnels)
             {
-                // Rotate the tunnel around its local Z-axis.
-                tunnel.transform.Rotate(0, 0, -rotationAmount);
+                // Rotate the tunnel around its local X-axis 
+                tunnel.transform.Rotate(rotationAmount, 0, 0);
+                // Move tunnel towards player along its local X-axis
+                tunnel.transform.Translate(Vector3.left * forwardSpeed * Time.deltaTime, Space.World);
             }
         }
     }
-
 
     public void OnMove(InputAction.CallbackContext context)
     {
@@ -115,12 +130,10 @@ public class InfiniteRunnerMovement : MonoBehaviour
         }
     }
 
-    // Draws a wire sphere in the Scene view to visualize the ground check area.
     void OnDrawGizmos()
     {
         if (groundCheck != null)
         {
-            // Attempt to get the SphereCollider from the groundCheck if it's not already set.
             SphereCollider sc = groundChecker != null ? groundChecker : groundCheck.GetComponent<SphereCollider>();
             if (sc != null)
             {
