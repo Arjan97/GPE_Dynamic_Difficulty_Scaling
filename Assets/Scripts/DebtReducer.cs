@@ -3,9 +3,7 @@ using UnityEngine;
 [RequireComponent(typeof(Collider))]
 public abstract class DebtReducer : MonoBehaviour, IDebtReducer
 {
-    [Header("Debt Reduction")]
-    [Tooltip("How much debt this pickup reduces when collected.")]
-    [SerializeField] protected float debtReductionAmount = 10f;
+    protected float debtReductionAmount;
 
     public float DebtReductionAmount => debtReductionAmount;
 

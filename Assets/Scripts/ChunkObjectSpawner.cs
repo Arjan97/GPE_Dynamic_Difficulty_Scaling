@@ -1,88 +1,71 @@
-using System.Collections.Generic;
 using UnityEngine;
+using System.Collections.Generic;
 
 public class ChunkObjectSpawner : MonoBehaviour
 {
     [Header("Spawn Settings")]
-    [SerializeField] GameObject[] spawnPrefabs; // Objects to spawn
-    [SerializeField] int minSpawnCount = 1;
-    [SerializeField] int maxSpawnCount = 5;
-    [Range(0f, 1f)][SerializeField] float spawnChance = 0.7f;
-    [SerializeField] float yOffset = 1.5f; // Adjusted to avoid ground clipping
+    [Tooltip("Prefab of the object to spawn.")]
+    [SerializeField] private GameObject objectPrefab;
+    [Tooltip("Number of objects to spawn on this chunk.")]
+    [SerializeField] private int numberOfObjects = 5;
 
-    float chunkWidth = 10f;
-    float chunkHeight = 5f;
-    float chunkLength = 20f;
-    List<GameObject> spawnedObjects = new List<GameObject>();
+    [Header("Spawn Area Settings")]
+    [Tooltip("Area size (width, height) in local space within which objects are randomized on the X and Y axes.")]
+    [SerializeField] private Vector2 spawnAreaSize = new Vector2(10f, 5f);
 
-    void Awake()
-    {
-        CalculateChunkDimensions();
-    }
+    [Header("Z Offset")]
+    [Tooltip("Fixed local Z offset for spawned objects relative to the chunk.")]
+    [SerializeField] private float zOffset = 0f;
 
-    void CalculateChunkDimensions()
-    {
-        Renderer renderer = GetComponent<Renderer>();
-        if (renderer != null)
-        {
-            chunkWidth = renderer.bounds.size.x;
-            chunkHeight = renderer.bounds.size.y;
-            chunkLength = renderer.bounds.size.z;
-        }
-        else
-        {
-            Debug.LogWarning($"ChunkObjectSpawner: No Renderer found. Using defaults (Width={chunkWidth}, Height={chunkHeight}, Length={chunkLength})");
-        }
-    }
+    // List to keep track of spawned objects (for cleanup when respawning)
+    private List<GameObject> spawnedObjects = new List<GameObject>();
 
+    /// <summary>
+    /// Clears any previously spawned objects and spawns new ones.
+    /// Called from the ChunkManager when the chunk is first spawned or recycled.
+    /// </summary>
     public void SpawnObjects()
     {
         ClearObjects();
-        if (spawnPrefabs.Length == 0 || Random.value > spawnChance) return;
 
-        int spawnCount = Random.Range(minSpawnCount, maxSpawnCount + 1);
-        for (int i = 0; i < spawnCount; i++)
+        for (int i = 0; i < numberOfObjects; i++)
         {
-            GameObject prefab = spawnPrefabs[Random.Range(0, spawnPrefabs.Length)];
-            Vector3 spawnPos = GetRandomPosition();
+            // Calculate a random local position within the defined spawn area.
+            // Only X and Y are randomized; Z is fixed.
+            float randomX = Random.Range(-spawnAreaSize.x / 2f, spawnAreaSize.x / 2f);
+            float randomY = Random.Range(-spawnAreaSize.y / 2f, spawnAreaSize.y / 2f);
+            Vector3 localPos = new Vector3(randomX, randomY, zOffset);
 
-            // Ensure the spawned object inherits the exact Z rotation of the parent chunk
-            Quaternion spawnRotation = Quaternion.Euler(0, 0, transform.rotation.eulerAngles.z);
+            // Instantiate the object as a child of this chunk.
+            GameObject spawned = Instantiate(objectPrefab, transform);
+            spawned.transform.localPosition = localPos;
 
-            GameObject obj = Instantiate(prefab, spawnPos, spawnRotation, transform);
-            spawnedObjects.Add(obj);
+            // Ensure the spawned object's rotation matches the parent's rotation.
+            // This makes it parallel to the chunk.
+            spawned.transform.rotation = transform.rotation;
+
+            // Optionally, if you need only to match the X rotation, you could do:
+            // Vector3 euler = spawned.transform.rotation.eulerAngles;
+            // euler.x = transform.rotation.eulerAngles.x;
+            // spawned.transform.rotation = Quaternion.Euler(euler);
+
+            spawnedObjects.Add(spawned);
         }
-
-        Debug.Log($"Spawned {spawnCount} objects in chunk {gameObject.name} with rotation Z: {transform.rotation.eulerAngles.z}");
     }
 
-    public void ResetObjects()
+    /// <summary>
+    /// Destroys any previously spawned objects.
+    /// Called before spawning new ones, e.g., when the chunk is recycled.
+    /// </summary>
+    public void ClearObjects()
     {
-        foreach (var obj in spawnedObjects)
+        for (int i = 0; i < spawnedObjects.Count; i++)
         {
-            obj.transform.position = GetRandomPosition();
-            obj.SetActive(true);
-        }
-    }
-
-    void ClearObjects()
-    {
-        Debug.Log($"Clearing {spawnedObjects.Count} objects in chunk {gameObject.name}");
-        foreach (var obj in spawnedObjects)
-        {
-            Destroy(obj);
+            if (spawnedObjects[i] != null)
+            {
+                Destroy(spawnedObjects[i]);
+            }
         }
         spawnedObjects.Clear();
-    }
-
-    Vector3 GetRandomPosition()
-    {
-        float x = Random.Range(-chunkWidth / 2, chunkWidth / 2);
-        float y = Mathf.Max(0.5f, Random.Range(0, chunkHeight / 2)) + yOffset; // Ensures above ground
-        float z = Random.Range(-chunkLength / 2, chunkLength / 2);
-        Vector3 position = transform.position + new Vector3(x, y, z);
-
-        Debug.Log($"Spawning object at: {position} in chunk {gameObject.name}");
-        return position;
     }
 }
