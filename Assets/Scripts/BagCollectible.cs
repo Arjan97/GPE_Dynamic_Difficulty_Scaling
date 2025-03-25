@@ -7,7 +7,7 @@ public class BagCollectible : DebtReducer
 
     private void Awake()
     {
-        debtReductionAmount = coinValue;
+        debtAmount = coinValue;
     }
 
 }

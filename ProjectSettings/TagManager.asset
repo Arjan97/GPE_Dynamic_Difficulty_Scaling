@@ -8,6 +8,8 @@ TagManager:
   - ChunkObject
   - PlayerAnim
   - SpawnPlane
+  - FxTemporaire
+  - Rotate
   layers:
   - Default
   - TransparentFX

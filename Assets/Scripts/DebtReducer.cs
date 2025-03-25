@@ -3,31 +3,50 @@ using UnityEngine;
 [RequireComponent(typeof(Collider))]
 public abstract class DebtReducer : MonoBehaviour, IDebtReducer
 {
-    protected float debtReductionAmount;
+    protected float debtAmount;
 
-    public float DebtReductionAmount => debtReductionAmount;
+    [Tooltip("If true, this pickup will add debt instead of reducing it.")]
+    [SerializeField] protected bool isDebtAddition = false;
+
+    public float DebtReductionAmount => debtAmount;
 
     /// <summary>
-    /// Called when the player collects this item. 
-    /// Override if you want special effects or animations.
+    /// Reduces debt and adds score (only for reducing pickups).
     /// </summary>
     public virtual void ReduceDebt()
     {
-        // Apply the reduction to the DebtManager
-        DebtManager.Instance.ReduceDebt(debtReductionAmount);
+        DebtManager.Instance.ReduceDebt(debtAmount);
+        ScoreManager.Instance.AddScore(debtAmount);
 
-        // Destroy (or disable) this object afterward
         Destroy(gameObject);
     }
 
     /// <summary>
-    /// Check for collision with the player and reduce debt if triggered.
+    /// Adds debt (and does not affect score).
+    /// </summary>
+    public virtual void AddDebt()
+    {
+        // Passing a negative value increases the debt
+        DebtManager.Instance.ReduceDebt(-debtAmount);
+
+        Destroy(gameObject);
+    }
+
+    /// <summary>
+    /// On collision with the player, check the flag and call the proper method.
     /// </summary>
     protected virtual void OnTriggerEnter(Collider other)
     {
         if (other.CompareTag("Player"))
         {
-            ReduceDebt();
+            if (isDebtAddition)
+            {
+                AddDebt();
+            }
+            else
+            {
+                ReduceDebt();
+            }
         }
     }
 }

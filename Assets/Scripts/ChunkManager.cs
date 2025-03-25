@@ -262,34 +262,39 @@ public class ChunkManager : MonoBehaviour
     /// </summary>
     private void RandomizeChunkChildren(GameObject chunk)
     {
+        // Get all children (excluding the chunk root) and ensure they're enabled.
         Transform[] children = chunk.GetComponentsInChildren<Transform>(true);
         List<Transform> selectableChildren = new List<Transform>();
-
         foreach (Transform child in children)
         {
-            // Skip the chunk root itself.
             if (child == chunk.transform)
                 continue;
 
+            child.gameObject.SetActive(true);  // Re-enable everything first
             selectableChildren.Add(child);
         }
 
+        // Decide how many children to disable: a random number between minDisabledChildren and maxDisabledChildren.
+        int total = selectableChildren.Count;
         int numToDisable = Random.Range(minDisabledChildren, maxDisabledChildren + 1);
-        numToDisable = Mathf.Min(numToDisable, selectableChildren.Count);
+        numToDisable = Mathf.Min(numToDisable, total);
 
-        int disabledCount = 0;
-        foreach (Transform child in selectableChildren)
+        // Shuffle the list to randomize the order.
+        for (int i = 0; i < selectableChildren.Count; i++)
         {
-            if (disabledCount >= numToDisable)
-                break;
+            int rnd = Random.Range(i, selectableChildren.Count);
+            Transform temp = selectableChildren[i];
+            selectableChildren[i] = selectableChildren[rnd];
+            selectableChildren[rnd] = temp;
+        }
 
-            if (Random.value < disableChance && child.gameObject.activeSelf)
-            {
-                child.gameObject.SetActive(false);
-                disabledCount++;
-            }
+        // Disable the first numToDisable items from the shuffled list.
+        for (int i = 0; i < numToDisable; i++)
+        {
+            selectableChildren[i].gameObject.SetActive(false);
         }
     }
+
 
     /// <summary>
     /// Re-enables all child objects within the chunk.
