@@ -26,13 +26,13 @@ public class LevelController : MonoBehaviour
     private void OnEnable()
     {
         OutsideMapCheck.OnOutsideMapGameOver += HandleGameOver;
-        DebtManager.OnGameOver += HandleGameOver;
+        MoneyManager.OnGameOver += HandleGameOver;
     }
 
     private void OnDisable()
     {
-        if (DebtManager.Instance != null)
-            DebtManager.OnGameOver -= HandleGameOver;
+        if (MoneyManager.Instance != null)
+            MoneyManager.OnGameOver -= HandleGameOver;
         OutsideMapCheck.OnOutsideMapGameOver -= HandleGameOver;
 
     }
