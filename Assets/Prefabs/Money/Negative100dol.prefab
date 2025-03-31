@@ -5066,8 +5066,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 0.06630002, y: 0.1559, z: 0.00010000167}
-  m_Center: {x: -2.4979257e-19, y: 0, z: 0.00005000085}
+  m_Size: {x: 0.12179934, y: 0.178834, z: 0.038188428}
+  m_Center: {x: 0.0019416291, y: -0.0042528594, z: -0.0015150824}
 --- !u!95 &3004878575604677198
 Animator:
   serializedVersion: 7
@@ -5103,7 +5103,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   isDebtAddition: 0
-  debtToAdd: 100000
+  debtToAdd: 10000
   collectParticles: {fileID: 6213324571680173049}
 --- !u!1001 &3581647096412263598
 PrefabInstance:

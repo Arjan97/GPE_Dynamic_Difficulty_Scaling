@@ -15,7 +15,7 @@ public abstract class DebtReducer : MonoBehaviour, IDebtReducer
     /// </summary>
     public virtual void ReduceDebt()
     {
-        MoneyManager.Instance.ReduceDebt(debtAmount);
+        //MoneyManager.Instance.ReduceDebt(debtAmount);
         MoneyManager.Instance.IncreaseMoney(debtAmount);
 
         Destroy(gameObject);

@@ -12,8 +12,8 @@ public class InfiniteRunnerMovement : MonoBehaviour
     public float clampMax = 160f;
     [Header("Movement Settings")]
     public float forwardSpeed = 5f;    // Constant forward movement (along X-axis)
-    public float horizontalSpeed = 5f; // Input-based rotation speed for the tunnel
-    public float rotationSpeed = 10f;  // Speed at which player aligns to new ground
+    public float rotatingSpeed = 5f; // Input-based rotation speed for the tunnel
+    public float matchPlaneRotationSpeed = 10f;  // Speed at which player aligns to new ground
 
     [Header("Jump Settings")]
     public float jumpForce = 7f;       // Force applied upward when jumping
@@ -82,9 +82,9 @@ public class InfiniteRunnerMovement : MonoBehaviour
         Quaternion upAlignedRotation = Quaternion.FromToRotation(transform.up, groundNormal) * transform.rotation;
         float targetZRotation = lastGroundHit != null ? lastGroundHit.eulerAngles.z : transform.eulerAngles.z;
         Vector3 targetEuler = upAlignedRotation.eulerAngles;
-        targetEuler.z = Mathf.LerpAngle(transform.eulerAngles.z, targetZRotation, rotationSpeed * Time.deltaTime);
+        targetEuler.z = Mathf.LerpAngle(transform.eulerAngles.z, targetZRotation, matchPlaneRotationSpeed * Time.deltaTime);
         Quaternion targetRotation = Quaternion.Euler(targetEuler);
-        transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
+        transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, matchPlaneRotationSpeed * Time.deltaTime);
     }
 
     void MoveTunnel()
@@ -93,7 +93,7 @@ public class InfiniteRunnerMovement : MonoBehaviour
         GameObject[] tunnels = GameObject.FindGameObjectsWithTag("Center");
         if (tunnels != null && tunnels.Length > 0)
         {
-            float rotationAmount = -moveInput.x * horizontalSpeed * Time.deltaTime;
+            float rotationAmount = -moveInput.x * rotatingSpeed * Time.deltaTime;
             foreach (GameObject tunnel in tunnels)
             {
                 tunnel.transform.Rotate(rotationAmount, 0, 0);
@@ -103,7 +103,7 @@ public class InfiniteRunnerMovement : MonoBehaviour
         GameObject camRotator = GameObject.FindGameObjectWithTag("Rotate");
         if (camRotator != null)
         {
-            camRotator.transform.Rotate(0, 0, -moveInput.x * horizontalSpeed * Time.deltaTime);
+            camRotator.transform.Rotate(0, 0, -moveInput.x * rotatingSpeed * Time.deltaTime);
         }
     }
 

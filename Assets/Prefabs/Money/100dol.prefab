@@ -5065,8 +5065,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 0.06630002, y: 0.1559, z: 0.00010000167}
-  m_Center: {x: -2.4979257e-19, y: 0, z: 0.00005000085}
+  m_Size: {x: 0.09233501, y: 0.16716087, z: 0.043451995}
+  m_Center: {x: -0.00003665288, y: 0.0056303344, z: -0.0018170733}
 --- !u!114 &5619552571447743422
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5080,7 +5080,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   isDebtAddition: 0
-  coinValue: 100000
+  coinValue: 10000
   collectParticles: {fileID: 6703910309612470382}
 --- !u!95 &3004878575604677198
 Animator:

@@ -46,7 +46,6 @@ public class ChunkManager : MonoBehaviour
     [Header("Spawnable Objects")]
     [Tooltip("All the different object types to spawn on chunk planes.")]
     [SerializeField] private List<SpawnableObjectSettings> spawnableObjects = new List<SpawnableObjectSettings>();
-
     [Header("Plane Tag")]
     [Tooltip("Tag assigned to each plane child in the chunk prefab.")]
     [SerializeField] private string chunkPlanesTag = "SpawnPlane";
@@ -62,11 +61,15 @@ public class ChunkManager : MonoBehaviour
     {
         if (player == null)
             player = GameObject.FindGameObjectWithTag("Player")?.transform;
-
         // Measure the prefab's bounding box to know how wide each chunk is.
+        if (chunkPrefab != null)
+        {
+            
         Bounds bounds = CalculatePrefabBounds(chunkPrefab);
+
         chunkWidth = bounds.size.x;
         chunkMinX = bounds.min.x;
+        }
 
         // Spawn initial chunks with children fully enabled.
         for (int i = 0; i < initialChunks; i++)
@@ -162,7 +165,6 @@ public class ChunkManager : MonoBehaviour
         // Find all plane children by tag.
         Transform[] allChildren = chunk.GetComponentsInChildren<Transform>(true);
         List<Transform> planeTransforms = new List<Transform>();
-
         foreach (Transform child in allChildren)
         {
             if (child.CompareTag(chunkPlanesTag))
@@ -171,47 +173,52 @@ public class ChunkManager : MonoBehaviour
             }
         }
 
-        // For each plane, clear old children (spawned objects), then spawn new ones.
+        // Ensure we have a global container called "OBJECTS"
+        Transform objectsContainer = GameObject.Find("OBJECTS")?.transform;
+        if (objectsContainer == null)
+        {
+            GameObject newContainer = new GameObject("OBJECTS");
+            objectsContainer = newContainer.transform;
+        }
+
+        // For each plane, clear old spawned objects (from the container) and spawn new ones.
         foreach (Transform plane in planeTransforms)
         {
-            // 1) Clear previously spawned objects (destroy children except the plane itself).
-            ClearSpawnedObjects(plane);
+            // Optionally: You might want to clear only objects that were previously spawned for this plane.
+            // For simplicity, we assume that any object with a FollowPlane component referencing this plane is removed.
+            ClearSpawnedObjectsForPlane(plane, objectsContainer);
 
-            // 2) For each spawnable object setting, do a chance check, pick random count, spawn them.
+            // For each spawnable object setting, check spawn chance, then spawn.
             foreach (var settings in spawnableObjects)
             {
                 if (Random.value <= settings.spawnChance)
                 {
                     int count = Random.Range(settings.minNumber, settings.maxNumber + 1);
-
-                    // Calculate spawn area: either plane's bounds or custom.
+                    // Determine spawn area: either use the plane's renderer bounds or a custom size.
                     Vector2 spawnArea = settings.useParentBounds
                         ? CalculatePlaneBounds(plane)
                         : settings.customSpawnAreaSize;
-
-                    // Cache the prefab's original scale.
+                    // Cache the prefab's original local scale and local rotation.
                     Vector3 originalPrefabScale = settings.prefab.transform.localScale;
+                    Quaternion originalPrefabLocalRot = settings.prefab.transform.localRotation;
 
                     for (int i = 0; i < count; i++)
                     {
-                        // Random X and Z, lock Y to the offset.
+                        // Randomize X and Z within the spawn area; Y is fixed to settings.yOffset.
                         float randomX = Random.Range(-spawnArea.x / 2f, spawnArea.x / 2f);
                         float randomZ = Random.Range(-spawnArea.y / 2f, spawnArea.y / 2f);
+                        Vector3 localOffset = new Vector3(randomX, settings.yOffset, randomZ);
+                        // Calculate world position using the plane's transform.
+                        Vector3 worldPos = plane.TransformPoint(localOffset);
 
-                        // Y is locked to settings.yOffset.
-                        Vector3 localPos = new Vector3(randomX, settings.yOffset, randomZ);
-
-                        // Instantiate as a child of the plane.
-                        GameObject spawned = Instantiate(settings.prefab, plane);
-
-                        // Preserve the prefab's original scale.
+                        // Instantiate the object as a child of the global container.
+                        GameObject spawned = Instantiate(settings.prefab, worldPos, settings.prefab.transform.rotation, objectsContainer);
+                        // Reset the object's local scale to the original prefab scale.
                         spawned.transform.localScale = originalPrefabScale;
 
-                        // By default, this preserves the prefab's local rotation (no forced rotation).
-                        // If you want to align to plane's rotation, you can do it here.
-
-                        // Set the local position.
-                        spawned.transform.localPosition = localPos;
+                        // Add a FollowPlane component so the object will update its position relative to the plane.
+                        FollowPlane follower = spawned.AddComponent<FollowPlane>();
+                        follower.Initialize(plane, localOffset, originalPrefabLocalRot);
                     }
                 }
             }
@@ -221,12 +228,16 @@ public class ChunkManager : MonoBehaviour
     /// <summary>
     /// Clears previously spawned objects from the plane by destroying all child objects.
     /// </summary>
-    private void ClearSpawnedObjects(Transform plane)
+    private void ClearSpawnedObjectsForPlane(Transform plane, Transform objectsContainer)
     {
         List<GameObject> toDestroy = new List<GameObject>();
-        foreach (Transform child in plane)
+        foreach (Transform child in objectsContainer)
         {
-            toDestroy.Add(child.gameObject);
+            FollowPlane follower = child.GetComponent<FollowPlane>();
+            if (follower != null && follower.plane == plane)
+            {
+                toDestroy.Add(child.gameObject);
+            }
         }
         foreach (GameObject go in toDestroy)
         {

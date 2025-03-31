@@ -36,18 +36,6 @@ public class MoneyManager : MonoBehaviour
     // Event raised when the debt reaches the max threshold.
     public static event Action OnGameOver;
 
-    // UI References.
-    [Header("UI References")]
-    [SerializeField] private TMP_Text moneyText;
-    [SerializeField] private TMP_Text debtText;
-    [SerializeField] private TMP_Text netWorthText; // Optional
-
-    [Header("Money Paid (Score) Bar")]
-    [Tooltip("Slider representing the money paid (score).")]
-    [SerializeField] private Slider moneyPaidSlider;
-    [Tooltip("Optional text element on the slider to display the current score and target.")]
-    [SerializeField] private TMP_Text moneyPaidSliderText;
-
     private const string MoneyKey = "CurrentMoney";
     private const string DebtKey = "CurrentDebt";
     private const string HighScoreKey = "HighScore";
@@ -101,7 +89,6 @@ public class MoneyManager : MonoBehaviour
             PlayerPrefs.SetFloat(HighScoreKey, highScore);
             PlayerPrefs.Save();
         }
-        UpdateUI();
     }
 
     /// <summary>
@@ -114,7 +101,6 @@ public class MoneyManager : MonoBehaviour
             currentMoney = 0f;
         OnMoneyChanged?.Invoke(currentMoney);
         OnNetWorthChanged?.Invoke(GetNetWorth());
-        UpdateUI();
     }
 
     /// <summary>
@@ -131,7 +117,6 @@ public class MoneyManager : MonoBehaviour
         }
         OnDebtChanged?.Invoke(currentDebt);
         OnNetWorthChanged?.Invoke(GetNetWorth());
-        UpdateUI();
     }
 
     /// <summary>
@@ -144,7 +129,6 @@ public class MoneyManager : MonoBehaviour
             currentDebt = 0f;
         OnDebtChanged?.Invoke(currentDebt);
         OnNetWorthChanged?.Invoke(GetNetWorth());
-        UpdateUI();
     }
 
     /// <summary>
@@ -156,6 +140,22 @@ public class MoneyManager : MonoBehaviour
     }
 
     /// <summary>
+    /// Returns the player's current money.
+    /// </summary>
+    public float GetMoney()
+    {
+        return currentMoney;
+    }
+    /// <summary>
+    /// Returns the player's current debt.
+    /// </summary>
+    public float GetDebt()
+    {
+        return currentDebt;
+    }
+
+
+    /// <summary>
     /// Broadcasts current money, debt, and (optionally) net worth.
     /// </summary>
     private void BroadcastAll()
@@ -163,50 +163,7 @@ public class MoneyManager : MonoBehaviour
         OnMoneyChanged?.Invoke(currentMoney);
         OnDebtChanged?.Invoke(currentDebt);
         OnNetWorthChanged?.Invoke(GetNetWorth());
-        UpdateUI();
     }
-
-    /// <summary>
-    /// Updates UI text elements and the money paid slider.
-    /// </summary>
-    private void UpdateUI()
-    {
-        if (moneyText != null)
-            moneyText.text = "Money Paid: €" + currentMoney.ToString("F2");
-        if (debtText != null)
-            debtText.text = "Debt: €" + currentDebt.ToString("F2");
-        if (netWorthText != null)
-        {
-            float netWorth = GetNetWorth();
-            netWorthText.text = "Net Worth: €" + netWorth.ToString("F2");
-            netWorthText.color = netWorth < 0 ? UnityEngine.Color.red : UnityEngine.Color.green;
-        }
-
-        // Update the Money Paid slider:
-        if (moneyPaidSlider != null)
-        {
-            // The slider's max value is set to the high score.
-            moneyPaidSlider.maxValue = highScore;
-            // The slider's value represents the current money (score).
-            moneyPaidSlider.value = currentMoney;
-
-            if (moneyPaidSliderText != null)
-            {
-                moneyPaidSliderText.text = currentMoney.ToString("F0") + " / " + highScore.ToString("F0");
-            }
-
-            // Optionally, change the slider fill color when full.
-            Image fillImage = moneyPaidSlider.fillRect?.GetComponent<Image>();
-            if (fillImage != null)
-            {
-                if (currentMoney >= highScore)
-                    fillImage.color = Color.green;
-                else
-                    fillImage.color = Color.white; // Or your default color.
-            }
-        }
-    }
-
     /// <summary>
     /// Saves current money, debt, and high score to PlayerPrefs.
     /// </summary>
