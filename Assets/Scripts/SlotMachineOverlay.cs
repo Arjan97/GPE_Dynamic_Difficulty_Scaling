@@ -26,6 +26,8 @@ public class SlotMachineOverlay : MonoBehaviour
     [SerializeField, Range(0f, 1f)] private float loseAllProbability = 0.20f;
     // The remaining probability yields an average outcome between 0.5x and 2x.
 
+    private float jackpotBonusModifier = 0f;
+
     void Awake()
     {
         if (Instance == null)
@@ -41,6 +43,11 @@ public class SlotMachineOverlay : MonoBehaviour
         allInButton.onClick.AddListener(PlayAllIn);
         halfButton.onClick.AddListener(PlayHalf);
         closeButton.onClick.AddListener(HideSlotMachine);
+    }
+
+    public void SetJackpotBoost(float modifier)
+    {
+        jackpotBonusModifier = modifier;
     }
 
     /// <summary>
@@ -107,7 +114,7 @@ public class SlotMachineOverlay : MonoBehaviour
         {
             outcomeText.text = "Not enough money!";
             SetButtonsInteractable(false);
-            StartCoroutine(HideAfterDelay(1.0f));
+            StartCoroutine(HideAfterDelay(1f));
             return;
         }
 
@@ -120,8 +127,11 @@ public class SlotMachineOverlay : MonoBehaviour
         // Determine outcome.
         float rand = Random.value;
         float multiplier;
-        if (rand < jackpotProbability)
+        float finalJackpotChance = jackpotProbability + jackpotBonusModifier;
+        if (rand < finalJackpotChance)
+        {
             multiplier = 5f;
+        }
         else if (rand < jackpotProbability + loseAllProbability)
             multiplier = 0f;
         else
@@ -136,6 +146,10 @@ public class SlotMachineOverlay : MonoBehaviour
 
         // Hide overlay after 2 seconds.
         StartCoroutine(HideAfterDelay(2.0f));
+    }
+    public void SetJackpotProbability(float newProbability)
+    {
+        jackpotProbability = newProbability;
     }
 
     private IEnumerator HideAfterDelay(float delay)

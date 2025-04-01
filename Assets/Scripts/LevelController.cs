@@ -50,9 +50,11 @@ public class LevelController : MonoBehaviour
 
         Debug.Log("Game Over! Debt limit reached.");
         Debug.Log("Total playtime: " + sessionPlayTime.ToString("F2") + " seconds");
-
+        // Save playtime to PlayerPrefs.
+        PlayerPrefs.SetFloat("PlayTime", sessionPlayTime);
+        PlayerPrefs.Save();
         // Switch to the "GameOver" scene.
-        SceneManager.LoadScene("GameOver");
+        SceneManager.LoadScene("EndScore");
     }
     private void ResetGame() {         
            sessionPlayTime = 0f;

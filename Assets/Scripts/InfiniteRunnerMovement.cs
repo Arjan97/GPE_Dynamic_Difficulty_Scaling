@@ -86,6 +86,15 @@ public class InfiniteRunnerMovement : MonoBehaviour
         Quaternion targetRotation = Quaternion.Euler(targetEuler);
         transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, matchPlaneRotationSpeed * Time.deltaTime);
     }
+    public void SetForwardSpeed(float speed)
+    {
+        forwardSpeed = speed;
+    }
+
+    public void SetRotatingSpeed(float speed)
+    {
+        rotatingSpeed = speed;
+    }
 
     void MoveTunnel()
     {
@@ -114,11 +123,16 @@ public class InfiniteRunnerMovement : MonoBehaviour
 
     public void OnJump(InputAction.CallbackContext context)
     {
-        if (context.performed && isGrounded)
+        if (context.performed)
         {
-            rb.AddForce(transform.up * jumpForce, ForceMode.Impulse);
+            // Perform jump if the player is grounded.
+            if (isGrounded)
+            {
+                rb.AddForce(transform.up * jumpForce, ForceMode.Impulse);
+            }
         }
     }
+
 
     void OnDrawGizmos()
     {

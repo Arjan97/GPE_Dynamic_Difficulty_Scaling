@@ -23,22 +23,33 @@ public class MoneyManager : MonoBehaviour
     [Header("High Score Settings")]
     [Tooltip("Default high score if none is saved (money paid target).")]
     [SerializeField] private float defaultHighScore = 100f;
-    // High score persists between plays.
     private float highScore = 0f;
+
+    // NEW: Cumulative totals that persist between plays.
+    private float totalMoneyObtained = 0f;
+    private float totalDebtPaid = 0f;
+    // (PlayTime can be saved by your LevelController.)
 
     // UnityEvents to broadcast changes.
     [System.Serializable]
     public class FloatEvent : UnityEvent<float> { }
     public FloatEvent OnMoneyChanged;
     public FloatEvent OnDebtChanged;
-    public FloatEvent OnNetWorthChanged; // (Optional)
+    public FloatEvent OnNetWorthChanged;
+
+    [Header("Debt Payment UI")]
+    [Tooltip("Event used to update the mash slider in the debt payment UI.")]
+    public FloatEvent OnDebtPaymentProgress;
 
     // Event raised when the debt reaches the max threshold.
     public static event Action OnGameOver;
 
+    // PlayerPrefs keys
     private const string MoneyKey = "CurrentMoney";
     private const string DebtKey = "CurrentDebt";
     private const string HighScoreKey = "HighScore";
+    private const string TotalMoneyObtainedKey = "TotalMoneyObtained";
+    private const string TotalDebtPaidKey = "TotalDebtPaid";
 
     void Awake()
     {
@@ -60,6 +71,10 @@ public class MoneyManager : MonoBehaviour
         if (highScore <= 0f)
             highScore = defaultHighScore;
 
+        // Load cumulative totals.
+        totalMoneyObtained = PlayerPrefs.GetFloat(TotalMoneyObtainedKey, 0f);
+        totalDebtPaid = PlayerPrefs.GetFloat(TotalDebtPaidKey, 0f);
+
         // Reset current money and debt each play.
         currentMoney = 0f;
         currentDebt = 0f;
@@ -74,15 +89,15 @@ public class MoneyManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Increases the player's money by the given amount (money paid during the run).
+    /// Increases the player's money by the given amount and adds that to the cumulative total.
     /// </summary>
     public void IncreaseMoney(float amount)
     {
         currentMoney += amount;
+        totalMoneyObtained += amount;
         OnMoneyChanged?.Invoke(currentMoney);
         OnNetWorthChanged?.Invoke(GetNetWorth());
 
-        // If the new score exceeds the current high score, update it.
         if (currentMoney > highScore)
         {
             highScore = currentMoney;
@@ -113,20 +128,20 @@ public class MoneyManager : MonoBehaviour
         {
             currentDebt = maxDebt;
             OnGameOver?.Invoke();
-
         }
         OnDebtChanged?.Invoke(currentDebt);
         OnNetWorthChanged?.Invoke(GetNetWorth());
     }
 
     /// <summary>
-    /// Reduces the player's debt by the given amount (clamped to zero).
+    /// Reduces the player's debt by the given amount (clamped to zero) and adds to the cumulative debt paid.
     /// </summary>
     public void ReduceDebt(float amount)
     {
         currentDebt -= amount;
         if (currentDebt < 0f)
             currentDebt = 0f;
+        totalDebtPaid += amount;
         OnDebtChanged?.Invoke(currentDebt);
         OnNetWorthChanged?.Invoke(GetNetWorth());
     }
@@ -134,29 +149,32 @@ public class MoneyManager : MonoBehaviour
     /// <summary>
     /// Returns the player's net worth (current money minus current debt).
     /// </summary>
-    public float GetNetWorth()
-    {
-        return currentMoney - currentDebt;
-    }
+    public float GetNetWorth() => currentMoney - currentDebt;
 
     /// <summary>
     /// Returns the player's current money.
     /// </summary>
-    public float GetMoney()
-    {
-        return currentMoney;
-    }
+    public float GetMoney() => currentMoney;
+
     /// <summary>
     /// Returns the player's current debt.
     /// </summary>
-    public float GetDebt()
-    {
-        return currentDebt;
-    }
+    public float GetDebt() => currentDebt;
 
+    public float GetMaxDebt() => maxDebt;
 
     /// <summary>
-    /// Broadcasts current money, debt, and (optionally) net worth.
+    /// Returns the total money obtained (cumulative).
+    /// </summary>
+    public float GetTotalMoneyObtained() => totalMoneyObtained;
+
+    /// <summary>
+    /// Returns the total debt paid (cumulative).
+    /// </summary>
+    public float GetTotalDebtPaid() => totalDebtPaid;
+
+    /// <summary>
+    /// Broadcasts current money, debt, and net worth.
     /// </summary>
     private void BroadcastAll()
     {
@@ -164,17 +182,28 @@ public class MoneyManager : MonoBehaviour
         OnDebtChanged?.Invoke(currentDebt);
         OnNetWorthChanged?.Invoke(GetNetWorth());
     }
+
     /// <summary>
-    /// Saves current money, debt, and high score to PlayerPrefs.
+    /// Saves current money, debt, high score, and cumulative totals to PlayerPrefs.
     /// </summary>
     private void SaveData()
     {
         PlayerPrefs.SetFloat(MoneyKey, currentMoney);
         PlayerPrefs.SetFloat(DebtKey, currentDebt);
         PlayerPrefs.SetFloat(HighScoreKey, highScore);
+        PlayerPrefs.SetFloat(TotalMoneyObtainedKey, totalMoneyObtained);
+        PlayerPrefs.SetFloat(TotalDebtPaidKey, totalDebtPaid);
         PlayerPrefs.Save();
     }
 
     void OnApplicationQuit() => SaveData();
     void OnDestroy() => SaveData();
+
+    /// <summary>
+    /// Public function that can be called to update the debt payment slider.
+    /// </summary>
+    public void UpdateDebtPaymentProgress(float progress)
+    {
+        OnDebtPaymentProgress?.Invoke(progress);
+    }
 }
