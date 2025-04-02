@@ -18,7 +18,7 @@ MonoBehaviour:
   rareColor: {r: 1, g: 0.49019608, b: 0.78431374, a: 255}
   legendaryColor: {r: 1, g: 0.49019608, b: 0.19607843, a: 255}
   hoverSound: {fileID: 8300000, guid: f0cb06f9461ea8b4bba64f3f7064a702, type: 3}
-  clickSound: {fileID: 8300000, guid: 4656469a7b79f5c4a84f2ecd79f129d1, type: 3}
+  clickSound: {fileID: 8300000, guid: 17c12b2b9ed2c0144b7ff0692bcdd1a9, type: 3}
   notificationSound: {fileID: 0}
   accentColor: {r: 1, g: 0.6862745, b: 0, a: 1}
   accentColorInvert: {r: 0.09803922, g: 0.13725491, b: 0.1764706, a: 1}

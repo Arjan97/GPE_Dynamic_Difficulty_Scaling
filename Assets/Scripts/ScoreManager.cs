@@ -64,7 +64,7 @@ public class ScoreManager : MonoBehaviour
 
     private void LoadScores()
     {
-        // Load debt paid scores.
+        // Load debt paid
         debtPaidScores.Clear();
         for (int i = 0; i < maxScores; i++)
         {
@@ -72,7 +72,7 @@ public class ScoreManager : MonoBehaviour
             if (PlayerPrefs.HasKey(key))
                 debtPaidScores.Add(PlayerPrefs.GetFloat(key));
         }
-        // Load money made scores.
+        // Load money made
         moneyMadeScores.Clear();
         for (int i = 0; i < maxScores; i++)
         {
@@ -80,7 +80,7 @@ public class ScoreManager : MonoBehaviour
             if (PlayerPrefs.HasKey(key))
                 moneyMadeScores.Add(PlayerPrefs.GetFloat(key));
         }
-        // Load play time scores.
+        // Load play time
         playTimeScores.Clear();
         for (int i = 0; i < maxScores; i++)
         {
@@ -90,7 +90,7 @@ public class ScoreManager : MonoBehaviour
         }
     }
 
-    // Public getter methods so other scripts can access the lists.
+    // Public getters
     public List<float> GetDebtPaidScores() => new List<float>(debtPaidScores);
     public List<float> GetMoneyMadeScores() => new List<float>(moneyMadeScores);
     public List<float> GetPlayTimeScores() => new List<float>(playTimeScores);

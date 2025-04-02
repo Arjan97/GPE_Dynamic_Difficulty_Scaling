@@ -80,18 +80,23 @@ public class DebtPaymentOverlay : MonoBehaviour
     /// </summary>
     public void ShowOverlay()
     {
+        if (SlotMachineOverlay.Instance != null && SlotMachineOverlay.Instance.IsActive)
+            return; // Block if slot machine is open
+
         overlayPanel.SetActive(true);
         instructionText.text = "Mash the button!";
         resultText.text = "";
         UpdateProgress(0);
         UpdateMashCountText(0);
         if (timerFillImage != null)
-            timerFillImage.fillAmount = 1f; // Timer starts full.
+            timerFillImage.fillAmount = 1f;
 
         lockedInMoneyAtStart = MoneyManager.Instance.GetMoney();
         mashCount = 0;
         StartCoroutine(MashMiniGame());
     }
+
+    public bool IsActive => overlayPanel.activeSelf;
 
     private void Update()
     {
@@ -155,7 +160,7 @@ public class DebtPaymentOverlay : MonoBehaviour
         MoneyManager.Instance.ReduceDebt(debtReduction);
         MoneyManager.Instance.DecreaseMoney(basePayment);
 
-        resultText.text = $"Mashed {mashCount} times!\nPaid off €{debtReduction:F2} debt!";
+        resultText.text = $"Paid off €{debtReduction:F2} and used €{basePayment:F2}!";
         StartCoroutine(HideOverlayAfterDelay(2f));
     }
 

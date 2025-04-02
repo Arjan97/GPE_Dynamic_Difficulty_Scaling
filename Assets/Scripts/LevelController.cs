@@ -60,8 +60,8 @@ public class LevelController : MonoBehaviour
         if (ScoreManager.Instance != null)
         {
             // Update the top-5 lists with this session's cumulative totals.
-            ScoreManager.Instance.AddDebtPaidScore(MoneyManager.Instance.GetTotalDebtPaid());
-            ScoreManager.Instance.AddMoneyMadeScore(MoneyManager.Instance.GetTotalMoneyObtained());
+            ScoreManager.Instance.AddDebtPaidScore(MoneyManager.Instance.GetSessionDebtPaid());
+            ScoreManager.Instance.AddMoneyMadeScore(MoneyManager.Instance.GetSessionMoneyObtained());
             ScoreManager.Instance.AddPlayTimeScore(sessionPlayTime);
         }
 

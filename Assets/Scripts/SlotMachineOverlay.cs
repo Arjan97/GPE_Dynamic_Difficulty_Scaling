@@ -25,6 +25,12 @@ public class SlotMachineOverlay : MonoBehaviour
     [Tooltip("Chance to lose everything (0x multiplier).")]
     [SerializeField, Range(0f, 1f)] private float loseAllProbability = 0.20f;
     // The remaining probability yields an average outcome between 0.5x and 2x.
+    [Header("Audio")]
+    [SerializeField] private AudioSource audioSource;
+    [SerializeField] private AudioClip jackpotClip;
+    [SerializeField] private AudioClip winClip;
+    [SerializeField] private AudioClip loseClip;
+
 
     private float jackpotBonusModifier = 0f;
 
@@ -55,10 +61,14 @@ public class SlotMachineOverlay : MonoBehaviour
     /// </summary>
     public void ShowSlotMachine()
     {
+        if (DebtPaymentOverlay.Instance != null && DebtPaymentOverlay.Instance.IsActive)
+            return; // Don't show if debt overlay is active
+
         panel.SetActive(true);
         outcomeText.text = "Gamble to win up to 5x! Warning: You may lose it all.";
         SetButtonsInteractable(true);
     }
+
 
     /// <summary>
     /// Hides the slot machine overlay.
@@ -131,11 +141,19 @@ public class SlotMachineOverlay : MonoBehaviour
         if (rand < finalJackpotChance)
         {
             multiplier = 5f;
+            PlaySound(jackpotClip);
         }
         else if (rand < jackpotProbability + loseAllProbability)
+        {
             multiplier = 0f;
+            PlaySound(loseClip);
+        }
+
         else
+        {
             multiplier = Random.Range(1.1f, 2f);
+            PlaySound(winClip);
+        }
 
         float payout = bet * multiplier;
         MoneyManager.Instance.IncreaseMoney(payout);
@@ -147,9 +165,19 @@ public class SlotMachineOverlay : MonoBehaviour
         // Hide overlay after 2 seconds.
         StartCoroutine(HideAfterDelay(2.0f));
     }
+    public bool IsActive => panel.activeSelf;
+    public void SetLoseAllProbability(float newProb)
+    {
+        loseAllProbability = newProb;
+    }
     public void SetJackpotProbability(float newProbability)
     {
         jackpotProbability = newProbability;
+    }
+    private void PlaySound(AudioClip clip)
+    {
+        if (audioSource != null && clip != null)
+            audioSource.PlayOneShot(clip);
     }
 
     private IEnumerator HideAfterDelay(float delay)

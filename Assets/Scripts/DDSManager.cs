@@ -1,6 +1,8 @@
 using UnityEngine;
-
-public enum DifficultyLevel { Easy, Medium, Hard }
+using UnityEngine.Events;
+using UnityEngine.UI;
+using TMPro;
+using System;
 
 public class DDSManager : MonoBehaviour
 {
@@ -14,19 +16,30 @@ public class DDSManager : MonoBehaviour
     private float timer = 0f;
 
     [Header("Gamble (Slot Machine) Settings")]
-    // For gambling: when debt is high, we want an easier game, so a higher jackpot chance.
+    // Base settings using debt ratio:
     [SerializeField] private float easyJackpotProbability = 0.4f;   // When debt is high (player struggling)
     [SerializeField] private float hardJackpotProbability = 0.1f;     // When debt is low (player doing well)
-    // (Medium would fall in between; our interpolation uses hard and easy as extremes.)
 
     [Header("Player Movement Settings")]
-    // For player speeds, we define:
-    // - Hard: faster speeds (more challenging) when the player is doing well (low debt).
-    // - Easy: slower speeds (easier) when the player is struggling (high debt).
-    [SerializeField] private float hardForwardSpeed = 60f;
-    [SerializeField] private float easyForwardSpeed = 30f;
-    [SerializeField] private float hardRotatingSpeed = 60f;
-    [SerializeField] private float easyRotatingSpeed = 30f;
+    [SerializeField] private float hardForwardSpeed = 90f;
+    [SerializeField] private float easyForwardSpeed = 50f;
+    [SerializeField] private float hardRotatingSpeed = 90f;
+    [SerializeField] private float easyRotatingSpeed = 50f;
+
+    [Header("Money-Based Difficulty Adjustment")]
+    [Tooltip("If player's money (as a fraction of maxDebt) exceeds this threshold, the jackpot probability is further reduced.")]
+    [SerializeField] private float moneyThresholdRatio = 0.5f;  // if current money > 50% of maxDebt.
+    [Tooltip("The jackpot probability to use when the player is 'rich'.")]
+    [SerializeField] private float richJackpotProbability = 0.1f;
+
+    [Tooltip("Lose-all chance when player is struggling (easy).")]
+    [SerializeField] private float easyLoseAllProbability = 0.1f;
+
+    [Tooltip("Lose-all chance when player is doing well (hard).")]
+    [SerializeField] private float hardLoseAllProbability = 0.6f;
+
+    [Tooltip("If player's money exceeds the threshold, increase lose-all chance.")]
+    [SerializeField] private float richLoseAllProbability = 0.6f;
 
     void Awake()
     {
@@ -51,30 +64,37 @@ public class DDSManager : MonoBehaviour
 
     private void UpdateDifficulty()
     {
-        // Get the current debt ratio from MoneyManager.
-        // Assume MoneyManager.Instance.GetDebt() returns the current debt
-        // and MoneyManager.Instance.MaxDebt returns the maximum debt.
+        // Retrieve current debt and max debt from MoneyManager.
         float currentDebt = MoneyManager.Instance.GetDebt();
         float maxDebt = MoneyManager.Instance.GetMaxDebt();
         float debtRatio = (maxDebt > 0) ? Mathf.Clamp01(currentDebt / maxDebt) : 0f;
 
-        // When debtRatio is 0 (no debt), we want a hard setting (lower jackpot, faster speeds).
-        // When debtRatio is 1 (maxed), we want an easy setting (higher jackpot, slower speeds).
-        // We'll linearly interpolate:
+        // Base interpolation based on debt ratio:
         float targetJackpotProb = Mathf.Lerp(hardJackpotProbability, easyJackpotProbability, debtRatio);
-        // For movement: when debt is high, speeds increase.
         float targetForwardSpeed = Mathf.Lerp(easyForwardSpeed, hardForwardSpeed, debtRatio);
         float targetRotatingSpeed = Mathf.Lerp(easyRotatingSpeed, hardRotatingSpeed, debtRatio);
+        float targetLoseAllProb = Mathf.Lerp(easyLoseAllProbability, hardLoseAllProbability, debtRatio);
 
+        // Further adjust jackpot probability based on player's money:
+        float currentMoney = MoneyManager.Instance.GetMoney();
+        float moneyRatio = (maxDebt > 0) ? Mathf.Clamp01(currentMoney / maxDebt) : 0f;
+        if (moneyRatio > moneyThresholdRatio)
+        {
+            // Interpolate from the current targetJackpotProb to richJackpotProbability
+            // as moneyRatio goes from moneyThresholdRatio to 1.
+            float t = (moneyRatio - moneyThresholdRatio) / (1f - moneyThresholdRatio);
+            targetJackpotProb = Mathf.Lerp(targetJackpotProb, richJackpotProbability, t);
+            targetLoseAllProb = Mathf.Lerp(targetLoseAllProb, richLoseAllProbability, t);
+        }
 
-        Debug.Log($"DDSManager: DebtRatio = {debtRatio:F2} | JackpotProb = {targetJackpotProb:F2} | ForwardSpeed = {targetForwardSpeed} | RotatingSpeed = {targetRotatingSpeed}");
+        Debug.Log($"DDSManager: DebtRatio = {debtRatio:F2}, MoneyRatio = {moneyRatio:F2} => JackpotProb = {targetJackpotProb:F2}, hardLoseAllProb = {hardLoseAllProbability:F2}, RichLoseAllProb = {richLoseAllProbability:F2}, ForwardSpeed = {targetForwardSpeed}, RotatingSpeed = {targetRotatingSpeed}");
 
         // Apply these values:
-        // Assume SlotMachineOverlay.Instance.SetJackpotProbability(float) updates the slot machine's jackpot chance.
         if (SlotMachineOverlay.Instance != null)
             SlotMachineOverlay.Instance.SetJackpotProbability(targetJackpotProb);
+            SlotMachineOverlay.Instance.SetLoseAllProbability(targetLoseAllProb);
 
-        // Assume InfiniteRunnerMovement.Instance has public setters for forward and rotating speeds.
+
         if (InfiniteRunnerMovement.Instance != null)
         {
             InfiniteRunnerMovement.Instance.SetForwardSpeed(targetForwardSpeed);

@@ -26,7 +26,7 @@ public class DebtPayment : MonoBehaviour
             if (collectParticles != null)
             {
                 // Detach and play particle effect.
-                //collectParticles.transform.parent = null;
+                collectParticles.transform.parent = null;
                 collectParticles.transform.localScale = originalParticleScale;
                 collectParticles.gameObject.SetActive(true);
                 collectParticles.Play();
