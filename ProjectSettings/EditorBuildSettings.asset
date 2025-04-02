@@ -11,9 +11,12 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/WhiteBOX.unity
     guid: f66b185501e53f0478d2ffd5cb6f35e8
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/GameOver.unity
     guid: 3ca6ab5377bd64d4dbbde54ba1645d6a
+  - enabled: 1
+    path: Assets/Scenes/EndScore.unity
+    guid: 0cb85b9ad1f76124bbec6fb8ca4b1ffa
   m_configObjects:
     com.unity.input.settings: {fileID: 11400000, guid: 363cdb5e72c780645b04a31d3c708125, type: 2}
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}

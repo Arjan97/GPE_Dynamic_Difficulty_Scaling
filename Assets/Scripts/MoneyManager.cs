@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.Events;
-using UnityEngine.UI;
 using TMPro;
+using UnityEngine.UI;
 using System;
 
 public class MoneyManager : MonoBehaviour
@@ -11,7 +11,7 @@ public class MoneyManager : MonoBehaviour
     [Header("Money Settings")]
     [Tooltip("Default starting amount of money (used only if needed).")]
     [SerializeField] private float startingMoney = 100f;
-    [Tooltip("Current money (i.e. money paid during this run, resets each play).")]
+    [Tooltip("Current money (i.e. money obtained during this run, resets each play).")]
     [SerializeField] private float currentMoney = 0f;
     [Tooltip("Current debt amount (resets each play).")]
     [SerializeField] private float currentDebt = 0f;
@@ -21,14 +21,14 @@ public class MoneyManager : MonoBehaviour
     [SerializeField] private float maxDebt = 100f;
 
     [Header("High Score Settings")]
-    [Tooltip("Default high score if none is saved (money paid target).")]
+    [Tooltip("Default high score if none is saved (money obtained target).")]
     [SerializeField] private float defaultHighScore = 100f;
     private float highScore = 0f;
 
-    // NEW: Cumulative totals that persist between plays.
+    // NEW: Cumulative totals (persist across plays).
     private float totalMoneyObtained = 0f;
     private float totalDebtPaid = 0f;
-    // (PlayTime can be saved by your LevelController.)
+    // (PlayTime can be saved separately in LevelController.)
 
     // UnityEvents to broadcast changes.
     [System.Serializable]
@@ -38,13 +38,13 @@ public class MoneyManager : MonoBehaviour
     public FloatEvent OnNetWorthChanged;
 
     [Header("Debt Payment UI")]
-    [Tooltip("Event used to update the mash slider in the debt payment UI.")]
+    [Tooltip("Event used to update the debt payment (mash) slider in the UI.")]
     public FloatEvent OnDebtPaymentProgress;
 
-    // Event raised when the debt reaches the max threshold.
+    // Event raised when debt reaches max.
     public static event Action OnGameOver;
 
-    // PlayerPrefs keys
+    // PlayerPrefs keys.
     private const string MoneyKey = "CurrentMoney";
     private const string DebtKey = "CurrentDebt";
     private const string HighScoreKey = "HighScore";
@@ -66,7 +66,7 @@ public class MoneyManager : MonoBehaviour
 
     void Start()
     {
-        // Load the saved high score, or use the default if none exists.
+        // Load high score or use default.
         highScore = PlayerPrefs.GetFloat(HighScoreKey, 0f);
         if (highScore <= 0f)
             highScore = defaultHighScore;
@@ -75,7 +75,7 @@ public class MoneyManager : MonoBehaviour
         totalMoneyObtained = PlayerPrefs.GetFloat(TotalMoneyObtainedKey, 0f);
         totalDebtPaid = PlayerPrefs.GetFloat(TotalDebtPaidKey, 0f);
 
-        // Reset current money and debt each play.
+        // Reset current money and debt for new play.
         currentMoney = 0f;
         currentDebt = 0f;
 
@@ -84,12 +84,12 @@ public class MoneyManager : MonoBehaviour
 
     void Update()
     {
-        // Increase debt continuously (simulate interest/pressure).
+        // Increase debt continuously.
         IncreaseDebt(debtIncreaseRate * Time.deltaTime);
     }
 
     /// <summary>
-    /// Increases the player's money by the given amount and adds that to the cumulative total.
+    /// Increases current money and adds to cumulative total.
     /// </summary>
     public void IncreaseMoney(float amount)
     {
@@ -107,7 +107,7 @@ public class MoneyManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Decreases the player's money by the given amount (clamped to zero).
+    /// Decreases current money (clamped to 0).
     /// </summary>
     public void DecreaseMoney(float amount)
     {
@@ -119,7 +119,7 @@ public class MoneyManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Increases the player's debt by the given amount.
+    /// Increases current debt.
     /// </summary>
     public void IncreaseDebt(float amount)
     {
@@ -134,7 +134,7 @@ public class MoneyManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Reduces the player's debt by the given amount (clamped to zero) and adds to the cumulative debt paid.
+    /// Reduces current debt (clamped to 0) and adds to cumulative debt paid.
     /// </summary>
     public void ReduceDebt(float amount)
     {
@@ -146,36 +146,13 @@ public class MoneyManager : MonoBehaviour
         OnNetWorthChanged?.Invoke(GetNetWorth());
     }
 
-    /// <summary>
-    /// Returns the player's net worth (current money minus current debt).
-    /// </summary>
     public float GetNetWorth() => currentMoney - currentDebt;
-
-    /// <summary>
-    /// Returns the player's current money.
-    /// </summary>
     public float GetMoney() => currentMoney;
-
-    /// <summary>
-    /// Returns the player's current debt.
-    /// </summary>
     public float GetDebt() => currentDebt;
-
     public float GetMaxDebt() => maxDebt;
-
-    /// <summary>
-    /// Returns the total money obtained (cumulative).
-    /// </summary>
     public float GetTotalMoneyObtained() => totalMoneyObtained;
-
-    /// <summary>
-    /// Returns the total debt paid (cumulative).
-    /// </summary>
     public float GetTotalDebtPaid() => totalDebtPaid;
 
-    /// <summary>
-    /// Broadcasts current money, debt, and net worth.
-    /// </summary>
     private void BroadcastAll()
     {
         OnMoneyChanged?.Invoke(currentMoney);
@@ -184,9 +161,9 @@ public class MoneyManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Saves current money, debt, high score, and cumulative totals to PlayerPrefs.
+    /// Saves current session data and cumulative totals to PlayerPrefs.
     /// </summary>
-    private void SaveData()
+    public void SaveData()
     {
         PlayerPrefs.SetFloat(MoneyKey, currentMoney);
         PlayerPrefs.SetFloat(DebtKey, currentDebt);
@@ -200,7 +177,7 @@ public class MoneyManager : MonoBehaviour
     void OnDestroy() => SaveData();
 
     /// <summary>
-    /// Public function that can be called to update the debt payment slider.
+    /// Public method to update the debt payment slider via UnityEvent.
     /// </summary>
     public void UpdateDebtPaymentProgress(float progress)
     {
