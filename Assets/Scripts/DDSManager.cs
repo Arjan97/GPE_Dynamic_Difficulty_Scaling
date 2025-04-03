@@ -6,7 +6,6 @@ using System;
 
 public class DDSManager : MonoBehaviour
 {
-    public static DDSManager Instance { get; private set; }
 
     [Header("DDS Toggle")]
     [SerializeField] private bool enableDDS = true;
@@ -40,13 +39,12 @@ public class DDSManager : MonoBehaviour
 
     [Tooltip("If player's money exceeds the threshold, increase lose-all chance.")]
     [SerializeField] private float richLoseAllProbability = 0.6f;
+    [SerializeField] private SlotMachineOverlay slotMachineOverlay;
 
-    void Awake()
+    private void Start()
     {
-        if (Instance == null)
-            Instance = this;
-        else
-            Destroy(gameObject);
+        if (slotMachineOverlay == null)
+            slotMachineOverlay = FindFirstObjectByType<SlotMachineOverlay>();
     }
 
     void Update()
@@ -66,7 +64,7 @@ public class DDSManager : MonoBehaviour
     {
         // Retrieve current debt and max debt from MoneyManager.
         float currentDebt = MoneyManager.Instance.GetDebt();
-        float maxDebt = MoneyManager.Instance.GetMaxDebt();
+        float maxDebt =     MoneyManager.Instance.GetMaxDebt();
         float debtRatio = (maxDebt > 0) ? Mathf.Clamp01(currentDebt / maxDebt) : 0f;
 
         // Base interpolation based on debt ratio:
@@ -90,9 +88,9 @@ public class DDSManager : MonoBehaviour
         Debug.Log($"DDSManager: DebtRatio = {debtRatio:F2}, MoneyRatio = {moneyRatio:F2} => JackpotProb = {targetJackpotProb:F2}, hardLoseAllProb = {hardLoseAllProbability:F2}, RichLoseAllProb = {richLoseAllProbability:F2}, ForwardSpeed = {targetForwardSpeed}, RotatingSpeed = {targetRotatingSpeed}");
 
         // Apply these values:
-        if (SlotMachineOverlay.Instance != null)
-            SlotMachineOverlay.Instance.SetJackpotProbability(targetJackpotProb);
-            SlotMachineOverlay.Instance.SetLoseAllProbability(targetLoseAllProb);
+        if (slotMachineOverlay != null)
+            slotMachineOverlay.SetJackpotProbability(targetJackpotProb);
+            slotMachineOverlay.SetLoseAllProbability(targetLoseAllProb);
 
 
         if (InfiniteRunnerMovement.Instance != null)

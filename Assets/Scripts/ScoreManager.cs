@@ -1,17 +1,40 @@
-using UnityEngine;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+
+[Serializable]
+public class SessionStats
+{
+    public string sessionID;
+    public float moneyObtained;
+    public float debtPaid;
+    public float playTime; // in seconds
+
+    public SessionStats(string sessionID, float moneyObtained, float debtPaid, float playTime)
+    {
+        this.sessionID = sessionID;
+        this.moneyObtained = moneyObtained;
+        this.debtPaid = debtPaid;
+        this.playTime = playTime;
+    }
+}
+
+[Serializable]
+public class SessionStatsList
+{
+    public List<SessionStats> sessions;
+}
 
 public class ScoreManager : MonoBehaviour
 {
     public static ScoreManager Instance { get; private set; }
+    private const int maxSessions = 5;
+    private const string sessionStatsKey = "SessionStats";
 
-    private const int maxScores = 5;
-
-    // Separate lists for each category.
-    private List<float> debtPaidScores = new List<float>();
-    private List<float> moneyMadeScores = new List<float>();
-    private List<float> playTimeScores = new List<float>();
+    // List of all session records loaded from PlayerPrefs.
+    private List<SessionStats> allSessions = new List<SessionStats>();
 
     private void Awake()
     {
@@ -19,7 +42,7 @@ public class ScoreManager : MonoBehaviour
         {
             Instance = this;
             DontDestroyOnLoad(gameObject);
-            LoadScores();
+            LoadSessionStats();
         }
         else
         {
@@ -27,71 +50,76 @@ public class ScoreManager : MonoBehaviour
         }
     }
 
-    public void AddDebtPaidScore(float score)
+    /// <summary>
+    /// Call this method at the end of a session to add its stats.
+    /// </summary>
+    public void AddSessionStats(float moneyObtained, float debtPaid, float playTime)
     {
-        debtPaidScores.Add(score);
-        debtPaidScores = debtPaidScores.OrderByDescending(s => s).Take(maxScores).ToList();
-        SaveScores("DebtPaid", debtPaidScores);
+        // Create a new session record with a unique ID.
+        string sessionID = Guid.NewGuid().ToString();
+        SessionStats newSession = new SessionStats(sessionID, moneyObtained, debtPaid, playTime);
+        allSessions.Add(newSession);
+
+        // Sort the sessions:
+        // Primary: moneyObtained descending,
+        // Secondary: debtPaid descending,
+        // Tertiary: playTime descending.
+        allSessions = allSessions
+            .OrderByDescending(s => s.moneyObtained)
+            .ThenByDescending(s => s.debtPaid)
+            .ThenByDescending(s => s.playTime)
+            .ToList();
+
+        // Keep only the top maxSessions sessions.
+        if (allSessions.Count > maxSessions)
+            allSessions = allSessions.Take(maxSessions).ToList();
+
+        SaveSessionStats();
     }
 
-    public void AddMoneyMadeScore(float score)
+    /// <summary>
+    /// Saves all session records as a JSON string under one key.
+    /// </summary>
+    private void SaveSessionStats()
     {
-        moneyMadeScores.Add(score);
-        moneyMadeScores = moneyMadeScores.OrderByDescending(s => s).Take(maxScores).ToList();
-        SaveScores("MoneyMade", moneyMadeScores);
-    }
-
-    public void AddPlayTimeScore(float score)
-    {
-        playTimeScores.Add(score);
-        playTimeScores = playTimeScores.OrderByDescending(s => s).Take(maxScores).ToList();
-        SaveScores("PlayTime", playTimeScores);
-    }
-
-    private void SaveScores(string keyPrefix, List<float> scores)
-    {
-        for (int i = 0; i < scores.Count; i++)
-        {
-            PlayerPrefs.SetFloat(keyPrefix + "_" + (i + 1), scores[i]);
-        }
-        // Clear any old entries beyond maxScores.
-        for (int i = scores.Count; i < maxScores; i++)
-        {
-            PlayerPrefs.DeleteKey(keyPrefix + "_" + (i + 1));
-        }
+        SessionStatsList wrapper = new SessionStatsList { sessions = allSessions };
+        string json = JsonUtility.ToJson(wrapper);
+        PlayerPrefs.SetString(sessionStatsKey, json);
         PlayerPrefs.Save();
     }
 
-    private void LoadScores()
+    /// <summary>
+    /// Loads the session records from PlayerPrefs.
+    /// </summary>
+    private void LoadSessionStats()
     {
-        // Load debt paid
-        debtPaidScores.Clear();
-        for (int i = 0; i < maxScores; i++)
+        allSessions.Clear();
+        if (PlayerPrefs.HasKey(sessionStatsKey))
         {
-            string key = "DebtPaid_" + (i + 1);
-            if (PlayerPrefs.HasKey(key))
-                debtPaidScores.Add(PlayerPrefs.GetFloat(key));
-        }
-        // Load money made
-        moneyMadeScores.Clear();
-        for (int i = 0; i < maxScores; i++)
-        {
-            string key = "MoneyMade_" + (i + 1);
-            if (PlayerPrefs.HasKey(key))
-                moneyMadeScores.Add(PlayerPrefs.GetFloat(key));
-        }
-        // Load play time
-        playTimeScores.Clear();
-        for (int i = 0; i < maxScores; i++)
-        {
-            string key = "PlayTime_" + (i + 1);
-            if (PlayerPrefs.HasKey(key))
-                playTimeScores.Add(PlayerPrefs.GetFloat(key));
+            string json = PlayerPrefs.GetString(sessionStatsKey);
+            SessionStatsList wrapper = JsonUtility.FromJson<SessionStatsList>(json);
+            if (wrapper != null && wrapper.sessions != null)
+            {
+                allSessions = wrapper.sessions;
+            }
         }
     }
 
-    // Public getters
-    public List<float> GetDebtPaidScores() => new List<float>(debtPaidScores);
-    public List<float> GetMoneyMadeScores() => new List<float>(moneyMadeScores);
-    public List<float> GetPlayTimeScores() => new List<float>(playTimeScores);
+    /// <summary>
+    /// Returns a copy of the session records.
+    /// </summary>
+    public List<SessionStats> GetSessionStats() => new List<SessionStats>(allSessions);
+
+    /// <summary>
+    /// Clears all PlayerPrefs saved data and reloads the current scene.
+    /// </summary>
+    public void ResetAllPlayerPrefs()
+    {
+        PlayerPrefs.DeleteAll();
+        PlayerPrefs.Save();
+        // Clear in-memory data as well.
+        allSessions.Clear();
+        // Reload the current scene.
+        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+    }
 }

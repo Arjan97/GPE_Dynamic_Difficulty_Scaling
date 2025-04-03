@@ -5,7 +5,6 @@ using System.Collections;
 
 public class SlotMachineOverlay : MonoBehaviour
 {
-    public static SlotMachineOverlay Instance { get; private set; }
 
     [Header("UI References")]
     [Tooltip("The overlay panel that contains the slot machine UI. Set inactive by default.")]
@@ -30,22 +29,16 @@ public class SlotMachineOverlay : MonoBehaviour
     [SerializeField] private AudioClip jackpotClip;
     [SerializeField] private AudioClip winClip;
     [SerializeField] private AudioClip loseClip;
-
+    [SerializeField] private DebtPaymentOverlay debtPaymentOverlay;
 
     private float jackpotBonusModifier = 0f;
-
-    void Awake()
-    {
-        if (Instance == null)
-            Instance = this;
-        else
-            Destroy(gameObject);
-    }
-
+   
     void Start()
     {
         panel.SetActive(false);
 
+        if (debtPaymentOverlay == null)
+            debtPaymentOverlay = FindFirstObjectByType<DebtPaymentOverlay>();
         allInButton.onClick.AddListener(PlayAllIn);
         halfButton.onClick.AddListener(PlayHalf);
         closeButton.onClick.AddListener(HideSlotMachine);
@@ -61,8 +54,8 @@ public class SlotMachineOverlay : MonoBehaviour
     /// </summary>
     public void ShowSlotMachine()
     {
-        if (DebtPaymentOverlay.Instance != null && DebtPaymentOverlay.Instance.IsActive)
-            return; // Don't show if debt overlay is active
+        if (debtPaymentOverlay != null && debtPaymentOverlay.IsActive && !IsActive)
+            return; // Don't show if debt overlay is ac or itselftive
 
         panel.SetActive(true);
         outcomeText.text = "Gamble to win up to 5x! Warning: You may lose it all.";

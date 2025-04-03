@@ -10,7 +10,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1141667535279354490}
   - component: {fileID: 5770773808051047931}
-  - component: {fileID: 6292057746705770029}
   m_Layer: 0
   m_Name: LevelController
   m_TagString: Untagged
@@ -45,25 +44,3 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2bec90d7ad6cc354e88a04245021147e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
---- !u!114 &6292057746705770029
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4774052857682761173}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b64f9e34d8af0eb4491f503692918257, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  chunkPrefabs:
-  - {fileID: 6905768238886341434, guid: 19e8f9d249b22d74ea650485e4299810, type: 3}
-  chunkLength: 100
-  player: {fileID: 0}
-  spawnDistance: 200
-  initialChunks: 8
-  minDisabledChildren: 2
-  maxDisabledChildren: 4
-  disableChance: 0.5
-  spawnDespawnThreshold: 20

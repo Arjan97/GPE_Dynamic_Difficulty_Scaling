@@ -12,4 +12,19 @@ public class ButtonManager : MonoBehaviour
     {
         SceneManager.LoadScene(sceneName);
     }
+    /// <summary>
+    /// Restarts the game.
+    /// </summary>
+    /// <param name="sceneName">The name of the scene to load.</param>
+    public void RestartGame()
+    {
+        if (LevelController.Instance != null)
+        {
+            LevelController.Instance.ResetGame();
+        }
+        else
+        {
+            SceneManager.LoadScene("Start");
+        }
+    }
 }

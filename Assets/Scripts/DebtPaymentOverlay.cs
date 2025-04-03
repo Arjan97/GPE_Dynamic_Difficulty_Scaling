@@ -3,10 +3,10 @@ using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
 using System.Collections;
+using static UnityEngine.Rendering.DebugUI;
 
 public class DebtPaymentOverlay : MonoBehaviour
 {
-    public static DebtPaymentOverlay Instance { get; private set; }
 
     [Header("UI References")]
     [Tooltip("The overlay panel for the debt payment mini-game.")]
@@ -43,19 +43,15 @@ public class DebtPaymentOverlay : MonoBehaviour
     private int mashCount = 0;
     private bool isMashing = false;
     private float lockedInMoneyAtStart = 0f;
-
-    private void Awake()
-    {
-        if (Instance == null)
-            Instance = this;
-        else
-            Destroy(gameObject);
-
-        overlayPanel.SetActive(false);
-    }
+    [SerializeField] private SlotMachineOverlay slotMachine;
 
     private void Start()
     {
+        // Ensure the overlay panel is inactive at the start.
+        overlayPanel.SetActive(false);
+        if (slotMachine == null)
+            slotMachine = FindFirstObjectByType<SlotMachineOverlay>();
+
         if (progressSlider != null)
         {
             progressSlider.minValue = 0;
@@ -80,7 +76,7 @@ public class DebtPaymentOverlay : MonoBehaviour
     /// </summary>
     public void ShowOverlay()
     {
-        if (SlotMachineOverlay.Instance != null && SlotMachineOverlay.Instance.IsActive)
+        if (slotMachine != null && slotMachine.IsActive && !IsActive)
             return; // Block if slot machine is open
 
         overlayPanel.SetActive(true);
@@ -115,7 +111,20 @@ public class DebtPaymentOverlay : MonoBehaviour
             }
         }
     }
+    public void DisplayNoMoneyMessage()
+    {
+        resultText.text = "";
+        instructionText.text = "No money to pay with, go make some!";
+        overlayPanel.SetActive(true);
+        DisableSlider(true);
+        StartCoroutine(HideOverlayAfterDelay(1.0f));
+    }
 
+    private void DisableSlider(bool disable)
+    {
+        if (progressSlider != null)
+            progressSlider.gameObject.SetActive(!disable);
+    }
     private IEnumerator MashMiniGame()
     {
         isMashing = true;
@@ -159,7 +168,7 @@ public class DebtPaymentOverlay : MonoBehaviour
 
         MoneyManager.Instance.ReduceDebt(debtReduction);
         MoneyManager.Instance.DecreaseMoney(basePayment);
-
+        instructionText.text = "";
         resultText.text = $"Paid off €{debtReduction:F2} and used €{basePayment:F2}!";
         StartCoroutine(HideOverlayAfterDelay(2f));
     }

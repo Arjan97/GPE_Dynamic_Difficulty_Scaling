@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
 
@@ -20,33 +21,47 @@ public class HighScoreDisplay : MonoBehaviour
 
     private void Start()
     {
-        // Load top-5
-        UpdateHighScoreUI("DebtPaid", debtPaidTexts, "€{0:F2}");
-        UpdateHighScoreUI("MoneyMade", moneyMadeTexts, "€{0:F2}");
-        UpdateHighScoreUI("PlayTime", playTimeTexts, "{0:F2} sec");
+        // Retrieve top sessions stored under one PlayerPrefs key
+        List<SessionStats> topSessions = ScoreManager.Instance.GetSessionStats();
 
-        // Display current session
+        // Update the Top Sessions UI for Debt Paid
+        for (int i = 0; i < debtPaidTexts.Length; i++)
+        {
+            if (i < topSessions.Count)
+                debtPaidTexts[i].text = $"{i + 1}. €{topSessions[i].debtPaid:F2}";
+            else
+                debtPaidTexts[i].text = $"{i + 1}. €0.00";
+        }
+
+        // Update the Top Sessions UI for Money Made
+        for (int i = 0; i < moneyMadeTexts.Length; i++)
+        {
+            if (i < topSessions.Count)
+                moneyMadeTexts[i].text = $"{i + 1}. €{topSessions[i].moneyObtained:F2}";
+            else
+                moneyMadeTexts[i].text = $"{i + 1}. €0.00";
+        }
+
+        // Update the Top Sessions UI for Play Time
+        for (int i = 0; i < playTimeTexts.Length; i++)
+        {
+            if (i < topSessions.Count)
+                playTimeTexts[i].text = $"{i + 1}. {topSessions[i].playTime:F2} sec";
+            else
+                playTimeTexts[i].text = $"{i + 1}. 0.00 sec";
+        }
+
+        // Display the current session stats separately
         float sessionDebtPaid = MoneyManager.Instance != null ? MoneyManager.Instance.GetSessionDebtPaid() : 0f;
         float sessionMoneyMade = MoneyManager.Instance != null ? MoneyManager.Instance.GetSessionMoneyObtained() : 0f;
+        // Retrieve session play time; adjust this source if you track it elsewhere
         float sessionPlayTime = PlayerPrefs.GetFloat("PlayTime", 0f);
 
         if (currentDebtPaidText != null)
             currentDebtPaidText.text = $"€{sessionDebtPaid:F2}";
-
         if (currentMoneyMadeText != null)
             currentMoneyMadeText.text = $"€{sessionMoneyMade:F2}";
-
         if (currentPlayTimeText != null)
             currentPlayTimeText.text = $"{sessionPlayTime:F2} sec";
-    }
-
-    private void UpdateHighScoreUI(string keyPrefix, TMP_Text[] textFields, string format)
-    {
-        for (int i = 0; i < textFields.Length; i++)
-        {
-            string key = keyPrefix + "_" + (i + 1);
-            float score = PlayerPrefs.GetFloat(key, 0f);
-            textFields[i].text = $"{i + 1}. " + string.Format(format, score);
-        }
     }
 }

@@ -8,6 +8,7 @@ public class LevelController : MonoBehaviour
 
     // Tracks total playtime in seconds for the current session.
     private float sessionPlayTime = 0f;
+    private bool gameOverHandled = false;
 
     // This event is raised when the game is over.
     public static event Action OnGameOverEvent;
@@ -46,6 +47,8 @@ public class LevelController : MonoBehaviour
 
     private void HandleGameOver()
     {
+        if (gameOverHandled) return;
+        gameOverHandled = true;
         // Raise the game over event for any subscribers.
         OnGameOverEvent?.Invoke();
 
@@ -55,14 +58,12 @@ public class LevelController : MonoBehaviour
         // Save playtime to PlayerPrefs.
         PlayerPrefs.SetFloat("PlayTime", sessionPlayTime);
 
-        // Optionally, you can update your high score lists here.
-        // For example, assume ScoreManager.Instance is valid and has these methods.
         if (ScoreManager.Instance != null)
         {
-            // Update the top-5 lists with this session's cumulative totals.
-            ScoreManager.Instance.AddDebtPaidScore(MoneyManager.Instance.GetSessionDebtPaid());
-            ScoreManager.Instance.AddMoneyMadeScore(MoneyManager.Instance.GetSessionMoneyObtained());
-            ScoreManager.Instance.AddPlayTimeScore(sessionPlayTime);
+            ScoreManager.Instance.AddSessionStats(
+            MoneyManager.Instance.GetSessionMoneyObtained(),
+            MoneyManager.Instance.GetSessionDebtPaid(),
+            sessionPlayTime);
         }
 
         // Save MoneyManager data (this saves current money, debt, high score, and cumulative totals).
@@ -70,7 +71,6 @@ public class LevelController : MonoBehaviour
 
         // Force a save of PlayerPrefs.
         PlayerPrefs.Save();
-
         // Switch to the "EndScore" scene to display the current session and top 5 scores.
         SceneManager.LoadScene("EndScore");
     }
@@ -78,9 +78,16 @@ public class LevelController : MonoBehaviour
     /// <summary>
     /// Resets the game (if needed) and reloads the main scene.
     /// </summary>
-    private void ResetGame()
+    public void ResetGame()
     {
+        // Reset MoneyManager session values.
+        if (MoneyManager.Instance != null)
+        {
+            MoneyManager.Instance.ResetSession();
+        }
+
         sessionPlayTime = 0f;
+        gameOverHandled = false;
         SceneManager.LoadScene("WhiteBOX");
     }
 }

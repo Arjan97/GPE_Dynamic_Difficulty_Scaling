@@ -8,9 +8,12 @@ public class DebtPayment : MonoBehaviour
     [Tooltip("Particle system to play when this trigger is activated.")]
     [SerializeField] private ParticleSystem collectParticles;
     private Vector3 originalParticleScale;
+    private DebtPaymentOverlay debtPaymentOverlay;
 
     private void Awake()
     {
+        if (debtPaymentOverlay == null)
+            debtPaymentOverlay = FindFirstObjectByType<DebtPaymentOverlay>();
         if (collectParticles != null)
         {
             originalParticleScale = collectParticles.transform.localScale;
@@ -33,12 +36,12 @@ public class DebtPayment : MonoBehaviour
             }
 
             // Activate the DebtPaymentOverlay.
-            if (DebtPaymentOverlay.Instance != null)
+            if (debtPaymentOverlay != null)
             {
                 if (MoneyManager.Instance.GetMoney() > 0)
-                    DebtPaymentOverlay.Instance.ShowOverlay();
+                    debtPaymentOverlay.ShowOverlay();
                 else
-                    SlotMachineOverlay.Instance.DisplayNoMoneyMessage();
+                    debtPaymentOverlay.DisplayNoMoneyMessage();
             }
 
             // Destroy this trigger so it doesn't trigger again.

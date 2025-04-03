@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 [System.Serializable]
 public class SpawnableObjectSettings
@@ -46,6 +47,7 @@ public class ChunkManager : MonoBehaviour
     [Header("Spawnable Objects")]
     [Tooltip("All the different object types to spawn on chunk planes.")]
     [SerializeField] private List<SpawnableObjectSettings> spawnableObjects = new List<SpawnableObjectSettings>();
+
     [Header("Plane Tag")]
     [Tooltip("Tag assigned to each plane child in the chunk prefab.")]
     [SerializeField] private string chunkPlanesTag = "SpawnPlane";
@@ -57,18 +59,18 @@ public class ChunkManager : MonoBehaviour
     private float chunkWidth;  // Total width in X.
     private float chunkMinX;   // Offset from pivot to left edge (bounds.min.x).
 
+
     void Start()
     {
         if (player == null)
             player = GameObject.FindGameObjectWithTag("Player")?.transform;
+
         // Measure the prefab's bounding box to know how wide each chunk is.
         if (chunkPrefab != null)
         {
-            
-        Bounds bounds = CalculatePrefabBounds(chunkPrefab);
-
-        chunkWidth = bounds.size.x;
-        chunkMinX = bounds.min.x;
+            Bounds bounds = CalculatePrefabBounds(chunkPrefab);
+            chunkWidth = bounds.size.x;
+            chunkMinX = bounds.min.x;
         }
 
         // Spawn initial chunks with children fully enabled.
@@ -184,8 +186,6 @@ public class ChunkManager : MonoBehaviour
         // For each plane, clear old spawned objects (from the container) and spawn new ones.
         foreach (Transform plane in planeTransforms)
         {
-            // Optionally: You might want to clear only objects that were previously spawned for this plane.
-            // For simplicity, we assume that any object with a FollowPlane component referencing this plane is removed.
             ClearSpawnedObjectsForPlane(plane, objectsContainer);
 
             // For each spawnable object setting, check spawn chance, then spawn.
@@ -305,7 +305,6 @@ public class ChunkManager : MonoBehaviour
             selectableChildren[i].gameObject.SetActive(false);
         }
     }
-
 
     /// <summary>
     /// Re-enables all child objects within the chunk.

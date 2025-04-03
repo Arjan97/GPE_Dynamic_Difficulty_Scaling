@@ -9,8 +9,6 @@ public class MoneyManager : MonoBehaviour
     public static MoneyManager Instance { get; private set; }
 
     [Header("Money Settings")]
-    [Tooltip("Default starting amount of money for a new session.")]
-    [SerializeField] private float startingMoney = 100f;
     [Tooltip("Current money in this session.")]
     [SerializeField] private float currentMoney = 0f;
     [Tooltip("Current debt in this session.")]
@@ -113,6 +111,18 @@ public class MoneyManager : MonoBehaviour
         OnMoneyChanged?.Invoke(currentMoney);
         OnNetWorthChanged?.Invoke(GetNetWorth());
     }
+    public void ResetSession()
+    {
+        // Reset session-specific values (but leave cumulative persistent data intact)
+        currentMoney = 0f;
+        currentDebt = 0f;
+        // Reset session totals:
+        sessionMoneyObtained = 0f;
+        sessionDebtPaid = 0f;
+
+        // Broadcast new (reset) values so that any UI updates immediately.
+        BroadcastAll();
+    }
 
     /// <summary>
     /// Increases current debt by amount (clamped at maxDebt => triggers game over).
@@ -139,7 +149,7 @@ public class MoneyManager : MonoBehaviour
         if (currentDebt < 0f)
             currentDebt = 0f;
 
-        sessionDebtPaid += amount;
+        sessionDebtPaid += MathF.Abs(amount);
 
         OnDebtChanged?.Invoke(currentDebt);
         OnNetWorthChanged?.Invoke(GetNetWorth());

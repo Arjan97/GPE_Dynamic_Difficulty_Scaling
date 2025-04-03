@@ -9,8 +9,11 @@ public class SlotMachineTrigger : MonoBehaviour
 
     // Store the original local scale of the particle system.
     private Vector3 originalParticleScale;
+    private SlotMachineOverlay slotMachineOverlay;
     private void Awake()
     {
+        if (slotMachineOverlay == null)
+            slotMachineOverlay = FindFirstObjectByType<SlotMachineOverlay>();
         if (collectParticles != null)
         {
             // Cache the original scale from the prefab.
@@ -37,9 +40,9 @@ public class SlotMachineTrigger : MonoBehaviour
                 collectParticles.Play();
             }
             if (MoneyManager.Instance.GetMoney() > 0)
-                SlotMachineOverlay.Instance.ShowSlotMachine();
+                slotMachineOverlay.ShowSlotMachine();
             else
-                SlotMachineOverlay.Instance.DisplayNoMoneyMessage();
+                slotMachineOverlay.DisplayNoMoneyMessage();
         }
     }
 }
