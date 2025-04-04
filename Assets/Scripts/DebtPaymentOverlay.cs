@@ -18,9 +18,7 @@ public class DebtPaymentOverlay : MonoBehaviour
     [Tooltip("Result text displaying the final debt paid.")]
     [SerializeField] private TMP_Text resultText;
     [Tooltip("Slider that shows mash progress (range 0 to mash threshold).")]
-    [SerializeField] private Slider progressSlider;
-    [Tooltip("Input field to set the required mash count (e.g., '20').")]
-    [SerializeField] private TMP_InputField mashTimesInput;
+    [SerializeField] private GameObject progressSlider;
     [Tooltip("Image used as a timer fill component. FillAmount goes from 1 to 0.")]
     [SerializeField] private Image timerFillImage;
 
@@ -52,23 +50,9 @@ public class DebtPaymentOverlay : MonoBehaviour
         if (slotMachine == null)
             slotMachine = FindFirstObjectByType<SlotMachineOverlay>();
 
-        if (progressSlider != null)
-        {
-            progressSlider.minValue = 0;
-            progressSlider.maxValue = goodMashThreshold;
-        }
+     
         if (timerFillImage != null)
             timerFillImage.fillAmount = 1f;
-
-        if (mashTimesInput != null && !string.IsNullOrEmpty(mashTimesInput.text))
-        {
-            if (int.TryParse(mashTimesInput.text, out int parsedValue))
-            {
-                goodMashThreshold = parsedValue;
-                if (progressSlider != null)
-                    progressSlider.maxValue = goodMashThreshold;
-            }
-        }
     }
 
     /// <summary>
@@ -113,10 +97,13 @@ public class DebtPaymentOverlay : MonoBehaviour
     }
     public void DisplayNoMoneyMessage()
     {
+        if (overlayPanel.activeSelf)
+            return; // Don't show if already shown
         resultText.text = "";
-        instructionText.text = "No money to pay with, go make some!";
+        instructionText.text = "No money to pay with, go gamble!";
         overlayPanel.SetActive(true);
         DisableSlider(true);
+        timerFillImage.fillAmount = 0f;
         StartCoroutine(HideOverlayAfterDelay(1.0f));
     }
 
@@ -124,6 +111,14 @@ public class DebtPaymentOverlay : MonoBehaviour
     {
         if (progressSlider != null)
             progressSlider.gameObject.SetActive(!disable);
+        StartCoroutine(EnableSliderAfterDelay(1f));
+    }
+
+    private IEnumerator EnableSliderAfterDelay(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        if (progressSlider != null)
+            progressSlider.gameObject.SetActive(true);
     }
     private IEnumerator MashMiniGame()
     {
@@ -167,7 +162,7 @@ public class DebtPaymentOverlay : MonoBehaviour
         float debtReduction = basePayment * multiplier;
 
         MoneyManager.Instance.ReduceDebt(debtReduction);
-        MoneyManager.Instance.DecreaseMoney(basePayment);
+        MoneyManager.Instance.DecreaseMoney(basePayment, true);
         instructionText.text = "";
         resultText.text = $"Paid off €{debtReduction:F2} and used €{basePayment:F2}!";
         StartCoroutine(HideOverlayAfterDelay(2f));
@@ -177,6 +172,9 @@ public class DebtPaymentOverlay : MonoBehaviour
     {
         yield return new WaitForSeconds(delay);
         overlayPanel.SetActive(false);
+        instructionText.text = "";
+        resultText.text = "";
+        timerFillImage.fillAmount = 0f;
     }
 
     /// <summary>
@@ -185,8 +183,6 @@ public class DebtPaymentOverlay : MonoBehaviour
     private void UpdateProgress(float progress)
     {
         OnProgressUpdate?.Invoke(progress);
-        if (progressSlider != null)
-            progressSlider.value = progress;
     }
 
     /// <summary>

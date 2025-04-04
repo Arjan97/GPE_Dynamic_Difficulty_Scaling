@@ -99,6 +99,8 @@ public class SlotMachineOverlay : MonoBehaviour
     /// </summary>
     public void DisplayNoMoneyMessage()
     {
+        if (panel.activeSelf)
+            return; // Don't show if already shown
         outcomeText.text = "No money to gamble!";
         panel.SetActive(true);  
         SetButtonsInteractable(false);
@@ -125,7 +127,7 @@ public class SlotMachineOverlay : MonoBehaviour
         SetButtonsInteractable(false);
 
         // Deduct the wager.
-        MoneyManager.Instance.DecreaseMoney(bet);
+        MoneyManager.Instance.DecreaseMoney(bet, false);
 
         // Determine outcome.
         float rand = Random.value;
@@ -149,7 +151,10 @@ public class SlotMachineOverlay : MonoBehaviour
         }
 
         float payout = bet * multiplier;
+        if (payout >= 0)
         MoneyManager.Instance.IncreaseMoney(payout);
+        else
+            MoneyManager.Instance.DecreaseMoney(Mathf.Abs(payout), true);
 
         float net = payout - bet;
         string result = net >= 0 ? $"Win: €{net:F2}" : $"Lose: €{Mathf.Abs(net):F2}";

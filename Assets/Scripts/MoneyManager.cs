@@ -43,7 +43,7 @@ public class MoneyManager : MonoBehaviour
 
     // PlayerPrefs keys for optional persistent data.
     private const string HighScoreKey = "HighScore";
-
+    private CounterAnimationController counterAnimationController;
     private void Awake()
     {
         if (Instance == null)
@@ -70,13 +70,16 @@ public class MoneyManager : MonoBehaviour
         sessionMoneyObtained = 0f;
         sessionDebtPaid = 0f;
 
+        if (counterAnimationController == null)
+            counterAnimationController = FindFirstObjectByType<CounterAnimationController>();
+
         BroadcastAll();
     }
 
     private void Update()
     {
         // Increase debt over time.
-        IncreaseDebt(debtIncreaseRate * Time.deltaTime);
+        IncreaseDebt(debtIncreaseRate * Time.deltaTime, false);
     }
 
     /// <summary>
@@ -90,19 +93,29 @@ public class MoneyManager : MonoBehaviour
         OnMoneyChanged?.Invoke(currentMoney);
         OnNetWorthChanged?.Invoke(GetNetWorth());
 
-        // Update a "high score" if you want to track largest session money in a single run.
         if (currentMoney > highScore)
         {
             highScore = currentMoney;
             PlayerPrefs.SetFloat(HighScoreKey, highScore);
             PlayerPrefs.Save();
         }
+
+        // Trigger the money increase animation.
+        if (counterAnimationController != null)
+            counterAnimationController.PlayMoneyIncreaseAnimation();
+        else
+        {
+            counterAnimationController = FindFirstObjectByType<CounterAnimationController>();
+            if (counterAnimationController != null)
+                counterAnimationController.PlayMoneyIncreaseAnimation();
+        }
     }
+
 
     /// <summary>
     /// Decreases current money by amount (clamped to 0).
     /// </summary>
-    public void DecreaseMoney(float amount)
+    public void DecreaseMoney(float amount, bool playDecrAnim)
     {
         currentMoney -= amount;
         if (currentMoney < 0f)
@@ -110,6 +123,17 @@ public class MoneyManager : MonoBehaviour
 
         OnMoneyChanged?.Invoke(currentMoney);
         OnNetWorthChanged?.Invoke(GetNetWorth());
+
+        if (counterAnimationController != null && playDecrAnim)
+            counterAnimationController.PlayMoneyDecreaseAnimation();
+        else
+        {
+            counterAnimationController = FindFirstObjectByType<CounterAnimationController>();
+            if (counterAnimationController != null && playDecrAnim)
+                counterAnimationController.PlayMoneyDecreaseAnimation();
+        }
+
+
     }
     public void ResetSession()
     {
@@ -127,13 +151,21 @@ public class MoneyManager : MonoBehaviour
     /// <summary>
     /// Increases current debt by amount (clamped at maxDebt => triggers game over).
     /// </summary>
-    public void IncreaseDebt(float amount)
+    public void IncreaseDebt(float amount, bool playAnim)
     {
         currentDebt += amount;
         if (currentDebt > maxDebt)
         {
             currentDebt = maxDebt;
             OnGameOver?.Invoke();
+        }
+        if (counterAnimationController != null && playAnim)
+            counterAnimationController.PlayDebtIncreaseAnimation();
+        else
+        {
+            counterAnimationController = FindFirstObjectByType<CounterAnimationController>();
+            if (counterAnimationController != null && playAnim)
+                counterAnimationController.PlayDebtIncreaseAnimation();
         }
 
         OnDebtChanged?.Invoke(currentDebt);
@@ -150,6 +182,14 @@ public class MoneyManager : MonoBehaviour
             currentDebt = 0f;
 
         sessionDebtPaid += MathF.Abs(amount);
+        if (counterAnimationController != null)
+            counterAnimationController.PlayDebtDecreaseAnimation();
+        else
+        {
+            counterAnimationController = FindFirstObjectByType<CounterAnimationController>();
+            if (counterAnimationController != null)
+                counterAnimationController.PlayDebtDecreaseAnimation();
+        }
 
         OnDebtChanged?.Invoke(currentDebt);
         OnNetWorthChanged?.Invoke(GetNetWorth());

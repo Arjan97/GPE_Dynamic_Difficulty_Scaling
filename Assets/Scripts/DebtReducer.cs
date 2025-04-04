@@ -26,8 +26,7 @@ public abstract class DebtReducer : MonoBehaviour, IDebtReducer
     /// </summary>
     public virtual void AddDebt()
     {
-        // Passing a negative value increases the debt
-        MoneyManager.Instance.ReduceDebt(-debtAmount);
+        MoneyManager.Instance.IncreaseDebt(debtAmount, true);
 
         Destroy(gameObject);
     }
