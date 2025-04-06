@@ -1,0 +1,45 @@
+{
+    "name": "MashAction",
+    "maps": [
+        {
+            "name": "Mash",
+            "id": "9469f8fc-6bc5-4ae3-a489-239638642843",
+            "actions": [
+                {
+                    "name": "Mash",
+                    "type": "Button",
+                    "id": "e0af1811-24ca-44d8-9f63-84e2d6d91208",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                }
+            ],
+            "bindings": [
+                {
+                    "name": "",
+                    "id": "492cde08-9692-4856-9c17-f9df26cb8f69",
+                    "path": "<Mouse>/leftButton",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Mash",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "a9726b78-95c3-4f80-879a-772324f41a72",
+                    "path": "<Touchscreen>/Press",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Mash",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                }
+            ]
+        }
+    ],
+    "controlSchemes": []
+}

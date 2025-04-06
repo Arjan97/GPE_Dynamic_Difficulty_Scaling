@@ -4,6 +4,7 @@ using UnityEngine.Events;
 using UnityEngine.UI;
 using System.Collections;
 using static UnityEngine.Rendering.DebugUI;
+using UnityEngine.InputSystem;
 
 public class DebtPaymentOverlay : MonoBehaviour
 {
@@ -42,6 +43,7 @@ public class DebtPaymentOverlay : MonoBehaviour
     private bool isMashing = false;
     private float lockedInMoneyAtStart = 0f;
     [SerializeField] private SlotMachineOverlay slotMachine;
+    [SerializeField] private InputActionReference mashAction;
 
     private void Start()
     {
@@ -78,23 +80,17 @@ public class DebtPaymentOverlay : MonoBehaviour
 
     public bool IsActive => overlayPanel.activeSelf;
 
-    private void Update()
+    void Update()
     {
-        // When the overlay is active, register a mash on any click or tap.
         if (overlayPanel.activeSelf && isMashing)
         {
-            // For mouse input
-            if (Input.GetMouseButtonDown(0))
-            {
-                RegisterMash();
-            }
-            // For touch input (register on first touch phase)
-            if (Input.touchCount > 0 && Input.GetTouch(0).phase == TouchPhase.Began)
+            if (mashAction != null && mashAction.action.WasPressedThisFrame())
             {
                 RegisterMash();
             }
         }
     }
+
     public void DisplayNoMoneyMessage()
     {
         if (overlayPanel.activeSelf)
@@ -149,7 +145,11 @@ public class DebtPaymentOverlay : MonoBehaviour
         {
             mashCount++;
             UpdateMashCountText(mashCount);
+#if UNITY_ANDROID && !UNITY_EDITOR
+        Handheld.Vibrate();
+#endif
         }
+
     }
 
     /// <summary>
@@ -193,4 +193,16 @@ public class DebtPaymentOverlay : MonoBehaviour
         if (mashCountText != null)
             mashCountText.text = $"Mashed {count} times!";
     }
+    void OnEnable()
+    {
+        if (mashAction != null)
+            mashAction.action.Enable();
+    }
+
+    void OnDisable()
+    {
+        if (mashAction != null)
+            mashAction.action.Disable();
+    }
+
 }
