@@ -34,7 +34,7 @@ public class DebtPaymentOverlay : MonoBehaviour
     [SerializeField] private float bonusMultiplier = 1.5f;
     [Tooltip("Multiplier if mash count is low.")]
     [SerializeField] private float poorMultiplier = 0.8f;
-
+    [SerializeField] AudioClip mashSound;
     [Header("Events")]
     [Tooltip("Event that updates mash progress (value from 0 to mash threshold).")]
     public UnityEvent<float> OnProgressUpdate;
@@ -144,6 +144,13 @@ public class DebtPaymentOverlay : MonoBehaviour
         if (isMashing)
         {
             mashCount++;
+            AudioSource audioSource = GetComponent<AudioSource>();
+            if (audioSource != null && mashSound != null)
+            {
+                if (audioSource.clip != mashSound)
+                    audioSource.clip = mashSound;
+                audioSource.Play();
+            }
             UpdateMashCountText(mashCount);
 #if UNITY_ANDROID && !UNITY_EDITOR
         Handheld.Vibrate();

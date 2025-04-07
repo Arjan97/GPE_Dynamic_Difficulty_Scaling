@@ -18,6 +18,8 @@ public class SpawnableObjectSettings
     [Tooltip("Vertical offset (local Y) for spawned objects.")]
     public float yOffset = 0f;
 
+    [Tooltip("If true, this object type will only be spawned once per chunk.")]
+    public bool uniqueInChunk = false;
     [Tooltip("If true, use the plane's renderer bounds as the spawn area; otherwise, use the custom size below.")]
     public bool useParentBounds = true;
 
@@ -44,6 +46,16 @@ public class ChunkManager : MonoBehaviour
     [Range(0f, 1f)]
     [SerializeField] private float disableChance = 0.5f;
 
+    [Header("Material Randomization Options")]
+    [Tooltip("If true, all children in a chunk will use the same material from the pool.")]
+    [SerializeField] private bool useUniformMaterialForChunk = false;
+    [Tooltip("If true (and if using uniform material for chunk), then a group of consecutive chunks will share the same material.")]
+    [SerializeField] private bool useUniformMaterialAcrossChunks = false;
+    [Tooltip("Number of consecutive chunks to share the same material.")]
+    [SerializeField] private int uniformGroupChunkMin = 1;
+    [SerializeField] private int uniformGroupChunkMax = 3;
+    [SerializeField] private Material[] variantMaterials;
+    [SerializeField] private bool randomizeChildrenMaterials = true;
     [Header("Spawnable Objects")]
     [Tooltip("All the different object types to spawn on chunk planes.")]
     [SerializeField] private List<SpawnableObjectSettings> spawnableObjects = new List<SpawnableObjectSettings>();
@@ -59,6 +71,10 @@ public class ChunkManager : MonoBehaviour
     private float chunkWidth;  // Total width in X.
     private float chunkMinX;   // Offset from pivot to left edge (bounds.min.x).
 
+    // Fields for group uniform material across chunks.
+    private Material currentGroupMaterial = null;
+    private int currentGroupChunkCounter = 0;
+    private int currentGroupChunkTarget = 0;
 
     void Start()
     {
@@ -78,6 +94,7 @@ public class ChunkManager : MonoBehaviour
         {
             SpawnChunk(randomiseChildren: false);
         }
+
     }
 
     void Update()
@@ -132,10 +149,77 @@ public class ChunkManager : MonoBehaviour
         {
             RandomizeChunkChildren(chunk);
         }
+        if (randomizeChildrenMaterials)
+        {
+            RandomizeChunkMaterials(chunk);
+        }
 
         // Now spawn objects on each plane in this chunk.
         SpawnObjectsOnPlanes(chunk);
     }
+    /// <summary>
+    /// Randomizes the materials on all child MeshRenderers in the chunk.
+    /// Forces the material's X tiling to 10.
+    /// Supports two modes:
+    /// 1. Uniform per chunk – all children use the same random material.
+    /// 2. Group uniform – consecutive chunks share the same material.
+    /// </summary>
+    private void RandomizeChunkMaterials(GameObject chunk)
+    {
+        MeshRenderer[] renderers = chunk.GetComponentsInChildren<MeshRenderer>(true);
+
+        // Determine the material to use.
+        Material chosenMat = null;
+        if (useUniformMaterialForChunk)
+        {
+            if (useUniformMaterialAcrossChunks)
+            {
+                // If no group is active OR if the group has reached its random count,
+                // pick a new random material and determine a new target group count.
+                if (currentGroupMaterial == null || currentGroupChunkCounter >= currentGroupChunkTarget)
+                {
+                    currentGroupMaterial = variantMaterials[Random.Range(0, variantMaterials.Length)];
+                    currentGroupChunkTarget = Random.Range(uniformGroupChunkMin, uniformGroupChunkMax + 1);
+                    currentGroupChunkCounter = 1;
+                }
+                else
+                {
+                    currentGroupChunkCounter++;
+                }
+                chosenMat = currentGroupMaterial;
+            }
+            else
+            {
+                // Each chunk gets its own random uniform material.
+                chosenMat = variantMaterials[Random.Range(0, variantMaterials.Length)];
+            }
+
+            // Apply the chosen material uniformly to all children.
+            foreach (MeshRenderer renderer in renderers)
+            {
+                renderer.material = chosenMat;
+                Vector2 tiling = renderer.material.mainTextureScale;
+                tiling.x = 10f;
+                renderer.material.mainTextureScale = tiling;
+            }
+        }
+        else
+        {
+            // Non-uniform: assign each child a random material individually.
+            foreach (MeshRenderer renderer in renderers)
+            {
+                if (variantMaterials != null && variantMaterials.Length > 0)
+                {
+                    Material randomMat = variantMaterials[Random.Range(0, variantMaterials.Length)];
+                    renderer.material = randomMat;
+                    Vector2 tiling = renderer.material.mainTextureScale;
+                    tiling.x = 10f;
+                    renderer.material.mainTextureScale = tiling;
+                }
+            }
+        }
+    }
+
 
     /// <summary>
     /// Recycles the given chunk by moving it to the end and randomizing/spawning new objects.
@@ -152,6 +236,19 @@ public class ChunkManager : MonoBehaviour
         EnableAllChunkChildren(chunk);
         RandomizeChunkChildren(chunk);
 
+        // Reset uniform group variables on recycle so the recycled chunk gets a new material.
+        if (randomizeChildrenMaterials && useUniformMaterialForChunk && useUniformMaterialAcrossChunks)
+        {
+            currentGroupMaterial = null;
+            currentGroupChunkCounter = 0;
+            currentGroupChunkTarget = 0;
+        }
+
+        if (randomizeChildrenMaterials)
+        {
+            RandomizeChunkMaterials(chunk);
+        }
+
         activeChunks.Add(chunk);
 
         // Re-spawn objects on planes.
@@ -164,6 +261,11 @@ public class ChunkManager : MonoBehaviour
     /// </summary>
     private void SpawnObjectsOnPlanes(GameObject chunk)
     {
+        // If this is the first chunk, do not spawn any objects.
+        if (activeChunks.Count > 0 && activeChunks[0] == chunk)
+        {
+            return;
+        }
         // Find all plane children by tag.
         Transform[] allChildren = chunk.GetComponentsInChildren<Transform>(true);
         List<Transform> planeTransforms = new List<Transform>();
@@ -183,6 +285,8 @@ public class ChunkManager : MonoBehaviour
             objectsContainer = newContainer.transform;
         }
 
+        HashSet<SpawnableObjectSettings> uniqueSpawned = new HashSet<SpawnableObjectSettings>();
+
         // For each plane, clear old spawned objects (from the container) and spawn new ones.
         foreach (Transform plane in planeTransforms)
         {
@@ -191,9 +295,15 @@ public class ChunkManager : MonoBehaviour
             // For each spawnable object setting, check spawn chance, then spawn.
             foreach (var settings in spawnableObjects)
             {
+                // If this object is unique and already spawned in the chunk, skip.
+                if (settings.uniqueInChunk && uniqueSpawned.Contains(settings))
+                    continue;
                 if (Random.value <= settings.spawnChance)
                 {
                     int count = Random.Range(settings.minNumber, settings.maxNumber + 1);
+                    // If uniqueInChunk is true, limit count to 1.
+                    if (settings.uniqueInChunk)
+                        count = Mathf.Min(count, 1);
                     // Determine spawn area: either use the plane's renderer bounds or a custom size.
                     Vector2 spawnArea = settings.useParentBounds
                         ? CalculatePlaneBounds(plane)
@@ -220,6 +330,9 @@ public class ChunkManager : MonoBehaviour
                         FollowPlane follower = spawned.AddComponent<FollowPlane>();
                         follower.Initialize(plane, localOffset, originalPrefabLocalRot);
                     }
+                    // Mark as spawned if unique.
+                    if (settings.uniqueInChunk)
+                        uniqueSpawned.Add(settings);
                 }
             }
         }

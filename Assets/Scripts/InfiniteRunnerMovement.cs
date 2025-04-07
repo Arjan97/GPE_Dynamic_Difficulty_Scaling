@@ -52,9 +52,10 @@ public class InfiniteRunnerMovement : MonoBehaviour
     SphereCollider groundChecker;
     Transform lastGroundHit;
     PlayerAnimatorController animController;
-
+    private AudioSource audioSource;
     Vector2 touchStartPos;
-
+    [SerializeField] private ChaseScript chaserScript;
+    bool gameOver = false;
     public float HorizontalInput
     {
         get
@@ -78,6 +79,8 @@ public class InfiniteRunnerMovement : MonoBehaviour
         rb = GetComponent<Rigidbody>();
         rb.freezeRotation = true;
         groundChecker = groundCheck.GetComponent<SphereCollider>();
+        if (audioSource == null)
+            audioSource = GetComponent<AudioSource>();
     }
 
     void Start()
@@ -87,19 +90,30 @@ public class InfiniteRunnerMovement : MonoBehaviour
 
     void Update()
     {
-        CheckGround();
-        UpdateForwardSpeedOverTime();
+        if (!gameOver) {
+            CheckGround();
+
+            UpdateForwardSpeedOverTime();
 
 #if UNITY_ANDROID && !UNITY_EDITOR
+if (!gameOver){
         HandleSwipeJump();
+
+}
 #endif
+        }
+
     }
 
     void FixedUpdate()
     {
 #if !UNITY_ANDROID || UNITY_EDITOR
-        Move(HorizontalInput);
-        ApplyPlayerTurning(HorizontalInput);
+        if (!gameOver)
+        {
+
+            Move(HorizontalInput);
+            ApplyPlayerTurning(HorizontalInput);
+        }
 
 #endif
 
@@ -109,9 +123,12 @@ public class InfiniteRunnerMovement : MonoBehaviour
         float horizontal = Mathf.Abs(rawInput) > tiltDeadzone ? Mathf.Clamp(rawInput, -1f, 1f) : 0f;
 
         tiltInput = horizontal;
+        if (!gameOver){
+        
         Move(horizontal);
     ApplyPlayerTurning(tiltInput);
 
+        }
 #endif
     }
     void UpdateForwardSpeedOverTime()
@@ -157,7 +174,13 @@ public class InfiniteRunnerMovement : MonoBehaviour
                 if (swipeY > minSwipeDistance && isGrounded)
                 {
                     rb.AddForce(transform.up * jumpForce, ForceMode.Impulse);
-                    Handheld.Vibrate();
+                    if (audioSource != null)
+                        audioSource.Play();
+                    // Make the chaser jump too
+                    if (chaserScript != null)
+                    {
+                        chaserScript.Jump();
+                    }
                 }
 
                 // Swipe down = Slam
@@ -168,7 +191,10 @@ public class InfiniteRunnerMovement : MonoBehaviour
             }
         }
     }
-
+    public bool GameOver(bool gameOverBool)
+    {
+      return gameOver = gameOverBool;
+    }
     void CheckGround()
     {
         Collider[] colliders = new Collider[3];
@@ -185,6 +211,17 @@ public class InfiniteRunnerMovement : MonoBehaviour
                 animController?.SetGroundedState(true);
                 break;
             }
+        }
+        if (!isGrounded)
+        {
+            // If we are not grounded => falling
+            if (chaserScript != null)
+                chaserScript.SetFalling(true);
+        }
+        else
+        {
+            if (chaserScript != null)
+                chaserScript.SetFalling(false);
         }
     }
 
@@ -239,6 +276,13 @@ public class InfiniteRunnerMovement : MonoBehaviour
         if (context.performed && isGrounded)
         {
             rb.AddForce(transform.up * jumpForce, ForceMode.Impulse);
+            if (audioSource != null)
+                audioSource.Play();
+            // Make the chaser jump too
+            if (chaserScript != null)
+            {
+                chaserScript.Jump();
+            }
         }
     }
 

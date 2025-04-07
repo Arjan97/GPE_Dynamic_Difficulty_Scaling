@@ -29,13 +29,10 @@ public class LevelController : MonoBehaviour
     private void OnEnable()
     {
         OutsideMapCheck.OnOutsideMapGameOver += HandleGameOver;
-        MoneyManager.OnGameOver += HandleGameOver;
     }
 
     private void OnDisable()
     {
-        if (MoneyManager.Instance != null)
-            MoneyManager.OnGameOver -= HandleGameOver;
         OutsideMapCheck.OnOutsideMapGameOver -= HandleGameOver;
     }
 
@@ -45,13 +42,16 @@ public class LevelController : MonoBehaviour
         sessionPlayTime += Time.deltaTime;
     }
 
-    private void HandleGameOver()
+    public void HandleGameOver()
     {
         if (gameOverHandled) return;
         gameOverHandled = true;
         // Raise the game over event for any subscribers.
         OnGameOverEvent?.Invoke();
-
+        if (InfiniteRunnerMovement.Instance != null)
+        {
+            InfiniteRunnerMovement.Instance.GameOver(true);
+        }
         Debug.Log("Game Over! Debt limit reached.");
         Debug.Log("Total playtime: " + sessionPlayTime.ToString("F2") + " seconds");
 
@@ -85,7 +85,10 @@ public class LevelController : MonoBehaviour
         {
             MoneyManager.Instance.ResetSession();
         }
-
+        if (InfiniteRunnerMovement.Instance != null)
+        {
+            InfiniteRunnerMovement.Instance.GameOver(false);
+        }
         sessionPlayTime = 0f;
         gameOverHandled = false;
         SceneManager.LoadScene("WhiteBOX");

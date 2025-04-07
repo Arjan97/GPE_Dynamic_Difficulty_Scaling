@@ -22,7 +22,13 @@ public class MoneyManager : MonoBehaviour
     [Tooltip("Default high score if none is saved.")]
     [SerializeField] private float defaultHighScore = 100f;
     private float highScore = 0f;
-
+    // Audio clips for win and loss sounds.
+    [Header("Audio Settings")]
+    [Tooltip("Sound played when money is added (win sound).")]
+    [SerializeField] private AudioClip moneyAddSound;
+    [Tooltip("Sound played when debt is increased (loss sound).")]
+    [SerializeField] private AudioClip debtAddSound;
+    private AudioSource audioSource;
     // Session-based totals (reset each new play).
     private float sessionMoneyObtained = 0f;
     private float sessionDebtPaid = 0f;
@@ -54,6 +60,12 @@ public class MoneyManager : MonoBehaviour
         else
         {
             Destroy(gameObject);
+        }
+        // Get or add an AudioSource component.
+        audioSource = GetComponent<AudioSource>();
+        if (audioSource == null)
+        {
+            audioSource = gameObject.AddComponent<AudioSource>();
         }
     }
 
@@ -109,6 +121,11 @@ public class MoneyManager : MonoBehaviour
             if (counterAnimationController != null)
                 counterAnimationController.PlayMoneyIncreaseAnimation();
         }
+        // Play win sound (money add SFX)
+        if (moneyAddSound != null && audioSource != null && !audioSource.isPlaying)
+        {
+            audioSource.PlayOneShot(moneyAddSound);
+        }
     }
 
 
@@ -133,7 +150,11 @@ public class MoneyManager : MonoBehaviour
                 counterAnimationController.PlayMoneyDecreaseAnimation();
         }
 
-
+        // Play loss sound (debt add SFX)
+        if (debtAddSound != null && audioSource != null && playDecrAnim && !audioSource.isPlaying)
+        {
+            audioSource.PlayOneShot(debtAddSound);
+        }
     }
     public void ResetSession()
     {
@@ -161,13 +182,18 @@ public class MoneyManager : MonoBehaviour
         }
         if (counterAnimationController != null && playAnim)
             counterAnimationController.PlayDebtIncreaseAnimation();
+
         else
         {
             counterAnimationController = FindFirstObjectByType<CounterAnimationController>();
             if (counterAnimationController != null && playAnim)
                 counterAnimationController.PlayDebtIncreaseAnimation();
         }
-
+        // Play loss sound (debt add SFX)
+        if (debtAddSound != null && audioSource != null && playAnim && !audioSource.isPlaying)
+        {
+            audioSource.PlayOneShot(debtAddSound);
+        }
         OnDebtChanged?.Invoke(currentDebt);
         OnNetWorthChanged?.Invoke(GetNetWorth());
     }
@@ -193,6 +219,11 @@ public class MoneyManager : MonoBehaviour
 
         OnDebtChanged?.Invoke(currentDebt);
         OnNetWorthChanged?.Invoke(GetNetWorth());
+        // Play win sound (money add SFX)
+        if (moneyAddSound != null && audioSource != null && !audioSource.isPlaying)
+        {
+            audioSource.PlayOneShot(moneyAddSound);
+        }
     }
 
     public float GetNetWorth() => currentMoney - currentDebt;
