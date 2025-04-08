@@ -1,6 +1,10 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using System;
+using UnityEngine.Analytics;
+using System.Collections.Generic;
+using Unity.Services.Core;
+using Unity.Services.Analytics;
 
 public class LevelController : MonoBehaviour
 {
@@ -9,9 +13,12 @@ public class LevelController : MonoBehaviour
     // Tracks total playtime in seconds for the current session.
     private float sessionPlayTime = 0f;
     private bool gameOverHandled = false;
-
+    // Count of how many times the player has replayed.
+    private int replayCount = 0;
     // This event is raised when the game is over.
     public static event Action OnGameOverEvent;
+    // Whether DDS is enabled.
+    public bool ddsEnabled = true;
 
     private void Awake()
     {
@@ -25,7 +32,6 @@ public class LevelController : MonoBehaviour
             Destroy(gameObject);
         }
     }
-
     private void OnEnable()
     {
         OutsideMapCheck.OnOutsideMapGameOver += HandleGameOver;
@@ -38,59 +44,74 @@ public class LevelController : MonoBehaviour
 
     private void Update()
     {
-        // Accumulate playtime during the session.
+        // Accumulate playtime.
         sessionPlayTime += Time.deltaTime;
     }
 
-    public void HandleGameOver()
+    public async void HandleGameOver()
     {
         if (gameOverHandled) return;
         gameOverHandled = true;
-        // Raise the game over event for any subscribers.
         OnGameOverEvent?.Invoke();
+
         if (InfiniteRunnerMovement.Instance != null)
-        {
-            InfiniteRunnerMovement.Instance.GameOver(true);
-        }
+            InfiniteRunnerMovement.Instance.SetGameOver(true);
+
         Debug.Log("Game Over! Debt limit reached.");
         Debug.Log("Total playtime: " + sessionPlayTime.ToString("F2") + " seconds");
 
-        // Save playtime to PlayerPrefs.
         PlayerPrefs.SetFloat("PlayTime", sessionPlayTime);
 
-        if (ScoreManager.Instance != null)
+        float moneyObtained = MoneyManager.Instance.GetSessionMoneyObtained();
+        float debtPaid = MoneyManager.Instance.GetSessionDebtPaid();
+        float currentMoney = MoneyManager.Instance.GetMoney();
+        float moneyLost = moneyObtained - currentMoney;
+        // Retrieve the player's chosen username.
+        string username = PlayerPrefs.GetString("username", "Guest");
+
+        // Optionally set the Analytics Service User ID to the username.
+        // AnalyticsService.Instance.UserId = username;
+
+        // Submit composite score to the leaderboard.
+        await LeaderboardManager.Instance.SubmitScoreAsync(moneyObtained, debtPaid, sessionPlayTime);
+
+        // Prepare and record the session analytics event.
+        SessionEndEvent sessionEvent = new SessionEndEvent();
+        sessionEvent.username = username;
+        sessionEvent.total_sessiontime = sessionPlayTime;
+        sessionEvent.replay_count = replayCount;
+        sessionEvent.money_made = moneyObtained;
+        sessionEvent.debt_paid = debtPaid;
+        sessionEvent.money_lost = moneyLost;
+        sessionEvent.dds_enabled = ddsEnabled;
+        AnalyticsService.Instance.RecordEvent(sessionEvent);
+
+        Dictionary<string, object> ddsData = DDSManager.Instance.GetCurrentDDSAnalytics();
+        AnalyticsService.Instance.RecordEvent(new DDSDifficultyEvent
         {
-            ScoreManager.Instance.AddSessionStats(
-            MoneyManager.Instance.GetSessionMoneyObtained(),
-            MoneyManager.Instance.GetSessionDebtPaid(),
-            sessionPlayTime);
-        }
+            avgSlotProbability = (float)ddsData["avgSlotProbability"],
+            difficultyLevel = (string)ddsData["difficultyLevel"],
+            debtRatio = (float)ddsData["debtRatio"],
+            moneyRatio = (float)ddsData["moneyRatio"]
+        });
 
-        // Save MoneyManager data (this saves current money, debt, high score, and cumulative totals).
-        MoneyManager.Instance.SaveData(); 
+        if (ScoreManager.Instance != null)
+            ScoreManager.Instance.AddSessionStats(moneyObtained, debtPaid, sessionPlayTime);
 
-        // Force a save of PlayerPrefs.
+        MoneyManager.Instance.SaveData();
         PlayerPrefs.Save();
-        // Switch to the "EndScore" scene to display the current session and top 5 scores.
         SceneManager.LoadScene("EndScore");
     }
 
-    /// <summary>
-    /// Resets the game (if needed) and reloads the main scene.
-    /// </summary>
     public void ResetGame()
     {
-        // Reset MoneyManager session values.
         if (MoneyManager.Instance != null)
-        {
             MoneyManager.Instance.ResetSession();
-        }
         if (InfiniteRunnerMovement.Instance != null)
-        {
-            InfiniteRunnerMovement.Instance.GameOver(false);
-        }
+            InfiniteRunnerMovement.Instance.SetGameOver(false);
         sessionPlayTime = 0f;
         gameOverHandled = false;
+        replayCount++;
         SceneManager.LoadScene("WhiteBOX");
     }
 }

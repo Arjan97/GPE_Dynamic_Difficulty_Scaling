@@ -56,11 +56,12 @@ public class InfiniteRunnerMovement : MonoBehaviour
     Vector2 touchStartPos;
     [SerializeField] private ChaseScript chaserScript;
     bool gameOver = false;
+
     public float HorizontalInput
     {
         get
         {
-#if UNITY_ANDROID && !UNITY_EDITOR
+#if UNITY_ANDROID && !UNITY_EDITOR || UNITY_IOS && !UNITY_EDITOR
             return tiltInput;
 #else
             return moveInput.x;
@@ -70,7 +71,7 @@ public class InfiniteRunnerMovement : MonoBehaviour
 
     void Awake()
     {
-#if UNITY_ANDROID && !UNITY_EDITOR
+#if UNITY_ANDROID && !UNITY_EDITOR || UNITY_IOS && !UNITY_EDITOR
         if (Accelerometer.current != null && !Accelerometer.current.enabled)
             InputSystem.EnableDevice(Accelerometer.current);
         EnhancedTouchSupport.Enable();
@@ -90,47 +91,33 @@ public class InfiniteRunnerMovement : MonoBehaviour
 
     void Update()
     {
-        if (!gameOver) {
-            CheckGround();
+        if (gameOver) return;
 
-            UpdateForwardSpeedOverTime();
+        CheckGround();
+        UpdateForwardSpeedOverTime();
 
-#if UNITY_ANDROID && !UNITY_EDITOR
-if (!gameOver){
+#if UNITY_ANDROID && !UNITY_EDITOR || UNITY_IOS && !UNITY_EDITOR
         HandleSwipeJump();
-
-}
 #endif
-        }
-
     }
-
     void FixedUpdate()
     {
-#if !UNITY_ANDROID || UNITY_EDITOR
-        if (!gameOver)
-        {
+        if (gameOver) return;
 
-            Move(HorizontalInput);
-            ApplyPlayerTurning(HorizontalInput);
-        }
+#if !UNITY_ANDROID || !UNITY_IOS || UNITY_EDITOR
+        Move(HorizontalInput);
+        ApplyPlayerTurning(HorizontalInput);
+#else
+    Vector3 tilt = tiltAction.ReadValue<Vector3>();
+    float rawInput = tilt.x * tiltSensitivity;
+    float horizontal = Mathf.Abs(rawInput) > tiltDeadzone ? Mathf.Clamp(rawInput, -1f, 1f) : 0f;
 
-#endif
-
-#if UNITY_ANDROID && !UNITY_EDITOR
-        Vector3 tilt = tiltAction.ReadValue<Vector3>();
-        float rawInput = tilt.x * tiltSensitivity;
-        float horizontal = Mathf.Abs(rawInput) > tiltDeadzone ? Mathf.Clamp(rawInput, -1f, 1f) : 0f;
-
-        tiltInput = horizontal;
-        if (!gameOver){
-        
-        Move(horizontal);
-    ApplyPlayerTurning(tiltInput);
-
-        }
+    tiltInput = horizontal;
+    Move(horizontal);
+    ApplyPlayerTurning(horizontal);
 #endif
     }
+
     void UpdateForwardSpeedOverTime()
     {
         playTime += Time.deltaTime;
@@ -191,10 +178,9 @@ if (!gameOver){
             }
         }
     }
-    public bool GameOver(bool gameOverBool)
-    {
-      return gameOver = gameOverBool;
-    }
+    public void SetGameOver(bool state) => gameOver = state;
+    public bool IsGameOver() => gameOver;
+
     void CheckGround()
     {
         Collider[] colliders = new Collider[3];
@@ -245,7 +231,8 @@ if (!gameOver){
         {
             float rotationBoost = 1f;
 
-#if UNITY_ANDROID && !UNITY_EDITOR
+#if UNITY_ANDROID && !UNITY_EDITOR || UNITY_IOS && !UNITY_EDITOR
+            // Use mobile rotation multiplier for mobile devices
     rotationBoost = mobileRotationMultiplier;
 #endif
 
@@ -266,7 +253,7 @@ if (!gameOver){
 
     public void OnMove(InputAction.CallbackContext context)
     {
-#if !UNITY_ANDROID || UNITY_EDITOR
+#if !UNITY_ANDROID || UNITY_EDITOR || !UNITY_IOS
         moveInput = context.ReadValue<Vector2>();
 #endif
     }

@@ -1,61 +1,108 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
+using System;
+using System.Linq;
+using System.Threading.Tasks;
+using Unity.Services.Leaderboards;
+using Unity.Services.Leaderboards.Models;
 
 public class HighScoreDisplay : MonoBehaviour
 {
-    [Header("Debt Paid (Top 5)")]
-    [SerializeField] private TMP_Text[] debtPaidTexts;
+    [Header("Leaderboard UI Elements")]
+    [SerializeField] private TMP_Text[] rankTexts;
+    [SerializeField] private TMP_Text[] usernameTexts;
+    [SerializeField] private TMP_Text[] scoreTexts;
 
-    [Header("Money Made (Top 5)")]
-    [SerializeField] private TMP_Text[] moneyMadeTexts;
-
-    [Header("Play Time (Top 5)")]
-    [SerializeField] private TMP_Text[] playTimeTexts;
-
-    // For current session:
     [Header("Current Session UI")]
     [SerializeField] private TMP_Text currentDebtPaidText;
     [SerializeField] private TMP_Text currentMoneyMadeText;
     [SerializeField] private TMP_Text currentPlayTimeText;
+    [SerializeField] private TMP_Text currentCompositeScoreText;
+    [SerializeField] private TMP_Text currentUsernameText;
 
-    private void Start()
+    private async void Start()
     {
-        // Retrieve top sessions stored under one PlayerPrefs key
-        List<SessionStats> topSessions = ScoreManager.Instance.GetSessionStats();
+        await LoadLeaderboardAsync();
+        UpdateCurrentSessionUI();
+    }
 
-        // Update the Top Sessions UI for Debt Paid
-        for (int i = 0; i < debtPaidTexts.Length; i++)
+    private async Task LoadLeaderboardAsync()
+    {
+        List<LeaderboardEntry> entries = new List<LeaderboardEntry>();
+        try
         {
-            if (i < topSessions.Count)
-                debtPaidTexts[i].text = $"{i + 1}. €{topSessions[i].debtPaid:F2}";
-            else
-                debtPaidTexts[i].text = $"{i + 1}. €0.00";
+            var scoresResponse = await LeaderboardsService.Instance.GetScoresAsync("GambleRun", new GetScoresOptions { Limit = 5 });
+            entries = scoresResponse.Results;
+        }
+        catch (Exception e)
+        {
+            Debug.LogError("Failed to fetch leaderboard scores: " + e.Message);
         }
 
-        // Update the Top Sessions UI for Money Made
-        for (int i = 0; i < moneyMadeTexts.Length; i++)
-        {
-            if (i < topSessions.Count)
-                moneyMadeTexts[i].text = $"{i + 1}. €{topSessions[i].moneyObtained:F2}";
-            else
-                moneyMadeTexts[i].text = $"{i + 1}. €0.00";
-        }
+        DisplayLeaderboard(entries);
+    }
 
-        // Update the Top Sessions UI for Play Time
-        for (int i = 0; i < playTimeTexts.Length; i++)
-        {
-            if (i < topSessions.Count)
-                playTimeTexts[i].text = $"{i + 1}. {topSessions[i].playTime:F2} sec";
-            else
-                playTimeTexts[i].text = $"{i + 1}. 0.00 sec";
-        }
+    private void DisplayLeaderboard(List<LeaderboardEntry> entries)
+    {
+        string currentUsername = PlayerPrefs.GetString("username", "Guest");
 
-        // Display the current session stats separately
+        for (int i = 0; i < rankTexts.Length; i++)
+        {
+            if (i < entries.Count)
+            {
+                var entry = entries[i];
+                string usernameRaw = entry.PlayerName ?? "Anonymous";
+                string username = usernameRaw.Contains("#") ? usernameRaw.Split('#')[0] : usernameRaw;
+
+                long score = (long)entry.Score;
+
+                rankTexts[i].text = $"{i + 1}.";
+                usernameTexts[i].text = username;
+                scoreTexts[i].text = $"{score}";
+
+                if (username.Equals(currentUsername, StringComparison.OrdinalIgnoreCase))
+                {
+                    rankTexts[i].color = Color.green;
+                    usernameTexts[i].color = Color.green;
+                    scoreTexts[i].color = Color.green;
+                }
+                else if (i == 0)
+                {
+                    Color gold = new Color(1f, 0.84f, 0f);
+                    rankTexts[i].color = gold;
+                    usernameTexts[i].color = gold;
+                    scoreTexts[i].color = gold;
+                }
+                else
+                {
+                    rankTexts[i].color = Color.red;
+                    usernameTexts[i].color = Color.red;
+                    scoreTexts[i].color = Color.red;
+                }
+            }
+            else
+            {
+                rankTexts[i].text = $"{i + 1}.";
+                usernameTexts[i].text = "N/A";
+                scoreTexts[i].text = "0";
+
+                rankTexts[i].color = Color.white;
+                usernameTexts[i].color = Color.white;
+                scoreTexts[i].color = Color.white;
+            }
+        }
+    }
+
+    private void UpdateCurrentSessionUI()
+    {
         float sessionDebtPaid = MoneyManager.Instance != null ? MoneyManager.Instance.GetSessionDebtPaid() : 0f;
         float sessionMoneyMade = MoneyManager.Instance != null ? MoneyManager.Instance.GetSessionMoneyObtained() : 0f;
-        // Retrieve session play time; adjust this source if you track it elsewhere
         float sessionPlayTime = PlayerPrefs.GetFloat("PlayTime", 0f);
+
+        int compositeScore = Mathf.RoundToInt(sessionMoneyMade + sessionDebtPaid + (0.5f * sessionPlayTime));
+        string username = PlayerPrefs.GetString("username", "Guest");
 
         if (currentDebtPaidText != null)
             currentDebtPaidText.text = $"€{sessionDebtPaid:F2}";
@@ -63,5 +110,9 @@ public class HighScoreDisplay : MonoBehaviour
             currentMoneyMadeText.text = $"€{sessionMoneyMade:F2}";
         if (currentPlayTimeText != null)
             currentPlayTimeText.text = $"{sessionPlayTime:F2} sec";
+        if (currentCompositeScoreText != null)
+            currentCompositeScoreText.text = $"{compositeScore}";
+        if (currentUsernameText != null)
+            currentUsernameText.text = username;
     }
 }

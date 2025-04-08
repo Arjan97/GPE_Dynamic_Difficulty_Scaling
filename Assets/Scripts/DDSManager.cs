@@ -3,10 +3,11 @@ using UnityEngine.Events;
 using UnityEngine.UI;
 using TMPro;
 using System;
+using System.Collections.Generic;
 
 public class DDSManager : MonoBehaviour
 {
-
+    public static DDSManager Instance { get; private set; }
     [Header("DDS Toggle")]
     [SerializeField] private bool enableDDS = true;
 
@@ -40,7 +41,18 @@ public class DDSManager : MonoBehaviour
     [Tooltip("If player's money exceeds the threshold, increase lose-all chance.")]
     [SerializeField] private float richLoseAllProbability = 0.6f;
     [SerializeField] private SlotMachineOverlay slotMachineOverlay;
-
+    private void Awake()
+    {
+        if (Instance == null)
+        {
+            Instance = this;
+            DontDestroyOnLoad(gameObject);
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
+    }
     private void Start()
     {
         if (slotMachineOverlay == null)
@@ -51,7 +63,14 @@ public class DDSManager : MonoBehaviour
     {
         if (!enableDDS)
             return;
-
+        if 
+        (slotMachineOverlay == null)
+        {
+            slotMachineOverlay = FindFirstObjectByType<SlotMachineOverlay>();
+            if (slotMachineOverlay == null)
+            {
+                enableDDS = false;            }
+        }
         timer += Time.deltaTime;
         if (timer >= updateInterval)
         {
@@ -98,5 +117,45 @@ public class DDSManager : MonoBehaviour
             //InfiniteRunnerMovement.Instance.SetForwardSpeed(targetForwardSpeed);
             InfiniteRunnerMovement.Instance.SetRotatingSpeed(targetRotatingSpeed);
         }
+    }
+    /// <summary>
+    /// Calculates current DDS analytics data and returns a dictionary for analytics events.
+    /// </summary>
+    /// <returns>A dictionary with avgSlotProbability, difficultyLevel, debtRatio, and moneyRatio.</returns>
+    public Dictionary<string, object> GetCurrentDDSAnalytics()
+    {
+        Dictionary<string, object> analyticsData = new Dictionary<string, object>();
+
+        float currentDebt = MoneyManager.Instance.GetDebt();
+        float maxDebt = MoneyManager.Instance.GetMaxDebt();
+        float debtRatio = (maxDebt > 0) ? Mathf.Clamp01(currentDebt / maxDebt) : 0f;
+
+        float targetJackpotProb = Mathf.Lerp(hardJackpotProbability, easyJackpotProbability, debtRatio);
+        float targetLoseAllProb = Mathf.Lerp(easyLoseAllProbability, hardLoseAllProbability, debtRatio);
+
+        float currentMoney = MoneyManager.Instance.GetMoney();
+        float moneyRatio = (maxDebt > 0) ? Mathf.Clamp01(currentMoney / maxDebt) : 0f;
+        if (moneyRatio > moneyThresholdRatio)
+        {
+            float t = (moneyRatio - moneyThresholdRatio) / (1f - moneyThresholdRatio);
+            targetJackpotProb = Mathf.Lerp(targetJackpotProb, richJackpotProbability, t);
+            targetLoseAllProb = Mathf.Lerp(targetLoseAllProb, richLoseAllProbability, t);
+        }
+
+        float avgSlotProb = (targetJackpotProb + targetLoseAllProb) / 2f;
+        string difficultyLevel = "Hard";
+        if (avgSlotProb < 0.25f)
+            difficultyLevel = "Hard";
+        else if (avgSlotProb < 0.45f)
+            difficultyLevel = "Medium";
+        else
+            difficultyLevel = "Easy";
+
+        analyticsData.Add("avgSlotProbability", avgSlotProb);
+        analyticsData.Add("difficultyLevel", difficultyLevel);
+        analyticsData.Add("debtRatio", debtRatio);
+        analyticsData.Add("moneyRatio", moneyRatio);
+
+        return analyticsData;
     }
 }

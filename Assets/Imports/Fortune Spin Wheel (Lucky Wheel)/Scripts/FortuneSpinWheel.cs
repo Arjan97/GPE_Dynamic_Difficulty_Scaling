@@ -76,7 +76,7 @@ namespace JSG.FortuneSpinWheel
                     m_IsSpinning = false;
                     m_RewardNumber = (int)((m_Rotation % 360) / 60);
 
-                    StartCoroutine(ShowRewardMenu(0.3f));
+                    StartCoroutine(ShowRewardMenu(0.5f));
                     HandleReward();
 
                 }
@@ -97,8 +97,11 @@ namespace JSG.FortuneSpinWheel
             switch (reward.m_Type)
             {
                 case "coin":
-                    MoneyManager.Instance.IncreaseMoney(reward.m_Count);
-                    m_audioSource.Play();
+                    if (MoneyManager.Instance != null)
+                    {
+                        MoneyManager.Instance.IncreaseMoney(reward.m_Count);
+                        m_audioSource.Play();
+                    }
                     break;
 
                 case "gem":

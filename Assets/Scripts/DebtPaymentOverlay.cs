@@ -141,38 +141,55 @@ public class DebtPaymentOverlay : MonoBehaviour
     /// </summary>
     public void RegisterMash()
     {
-        if (isMashing)
+        if (!isMashing) return;
+
+        mashCount++;
+        AudioSource audioSource = GetComponent<AudioSource>();
+        if (audioSource != null && mashSound != null)
         {
-            mashCount++;
-            AudioSource audioSource = GetComponent<AudioSource>();
-            if (audioSource != null && mashSound != null)
-            {
-                if (audioSource.clip != mashSound)
-                    audioSource.clip = mashSound;
-                audioSource.Play();
-            }
-            UpdateMashCountText(mashCount);
-#if UNITY_ANDROID && !UNITY_EDITOR
-        Handheld.Vibrate();
-#endif
+            if (audioSource.clip != mashSound)
+                audioSource.clip = mashSound;
+            audioSource.Play();
         }
 
+        UpdateMashCountText(mashCount);
+        StartCoroutine(PulseScale());
+
+#if UNITY_ANDROID || UNITY_IOS && !UNITY_EDITOR
+    Handheld.Vibrate();
+#endif
     }
+
 
     /// <summary>
     /// Evaluates mash performance, computes debt reduction, updates MoneyManager, and displays the result.
     /// </summary>
     private void EvaluateMash()
     {
-        float multiplier = (mashCount >= goodMashThreshold) ? bonusMultiplier : poorMultiplier;
+        float progressRatio = Mathf.Clamp01((float)mashCount / goodMashThreshold);
+        float multiplier = Mathf.Lerp(1f, 3f, progressRatio);
+
         float basePayment = lockedInMoneyAtStart * basePaymentPercent;
         float debtReduction = basePayment * multiplier;
 
         MoneyManager.Instance.ReduceDebt(debtReduction);
         MoneyManager.Instance.DecreaseMoney(basePayment, true);
         instructionText.text = "";
-        resultText.text = $"Paid off €{debtReduction:F2} and used €{basePayment:F2}!";
-        StartCoroutine(HideOverlayAfterDelay(2f));
+        resultText.text = $"Paid off €{debtReduction:F2} with {multiplier:F2}x Bonus!";
+        StartCoroutine(HideOverlayAfterDelay(1.5f));
+    }
+
+    private IEnumerator PulseScale()
+    {
+        if (progressSlider == null)
+            yield break;
+
+        Vector3 originalScale = progressSlider.transform.localScale;
+        Vector3 pulseScale = originalScale + new Vector3(0.1f, 0.1f, 0.1f);
+
+        progressSlider.transform.localScale = pulseScale;
+        yield return new WaitForSeconds(0.1f);
+        progressSlider.transform.localScale = originalScale;
     }
 
     private IEnumerator HideOverlayAfterDelay(float delay)
