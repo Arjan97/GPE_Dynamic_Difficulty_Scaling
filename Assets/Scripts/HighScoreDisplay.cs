@@ -100,8 +100,10 @@ public class HighScoreDisplay : MonoBehaviour
         float sessionDebtPaid = MoneyManager.Instance != null ? MoneyManager.Instance.GetSessionDebtPaid() : 0f;
         float sessionMoneyMade = MoneyManager.Instance != null ? MoneyManager.Instance.GetSessionMoneyObtained() : 0f;
         float sessionPlayTime = PlayerPrefs.GetFloat("PlayTime", 0f);
-
-        int compositeScore = Mathf.RoundToInt(sessionMoneyMade + sessionDebtPaid + (0.5f * sessionPlayTime));
+        float compositeScoreFloat = Mathf.Ceil(
+    (sessionMoneyMade + sessionDebtPaid) * (0.5f * sessionPlayTime)
+);
+        int compositeScore = Mathf.RoundToInt(compositeScoreFloat);
         string username = PlayerPrefs.GetString("username", "Guest");
 
         if (currentDebtPaidText != null)

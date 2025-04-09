@@ -1,0 +1,73 @@
+{
+    "name": "Slam",
+    "maps": [
+        {
+            "name": "New action map",
+            "id": "2de4fea3-96b9-440e-9d2c-44aad0ee636a",
+            "actions": [
+                {
+                    "name": "New action",
+                    "type": "Button",
+                    "id": "dee522bd-84e7-4eb0-8ddf-45eda6a21657",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                }
+            ],
+            "bindings": [
+                {
+                    "name": "",
+                    "id": "cfd97394-6eec-47e0-8622-8f9bc4cc68cb",
+                    "path": "",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "New action",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                }
+            ]
+        },
+        {
+            "name": "SlamDunk",
+            "id": "92d4a88b-75d6-40c9-9d00-388add605c0f",
+            "actions": [
+                {
+                    "name": "Slam",
+                    "type": "Button",
+                    "id": "2b9b0a2a-5eef-41d5-b59d-7bbef0a3d673",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                }
+            ],
+            "bindings": [
+                {
+                    "name": "",
+                    "id": "dd529882-36c2-4210-87ca-983b8135111c",
+                    "path": "<Keyboard>/s",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Slam",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "617141d2-c663-4696-b7e8-c2ebee46756b",
+                    "path": "<Keyboard>/downArrow",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Slam",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                }
+            ]
+        }
+    ],
+    "controlSchemes": []
+}

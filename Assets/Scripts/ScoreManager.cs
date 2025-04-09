@@ -118,6 +118,10 @@ public class ScoreManager : MonoBehaviour
         PlayerPrefs.SetString(sessionStatsKey, json);
         PlayerPrefs.Save();
     }
+    public void ClearLocalSessions()
+    {
+        allSessions.Clear();
+    }
 
     /// <summary>
     /// Loads the session records from PlayerPrefs.

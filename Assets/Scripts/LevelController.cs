@@ -69,9 +69,6 @@ public class LevelController : MonoBehaviour
         // Retrieve the player's chosen username.
         string username = PlayerPrefs.GetString("username", "Guest");
 
-        // Optionally set the Analytics Service User ID to the username.
-        // AnalyticsService.Instance.UserId = username;
-
         // Submit composite score to the leaderboard.
         await LeaderboardManager.Instance.SubmitScoreAsync(moneyObtained, debtPaid, sessionPlayTime);
 
@@ -105,6 +102,9 @@ public class LevelController : MonoBehaviour
 
     public void ResetGame()
     {
+        if (ScoreManager.Instance != null)
+            ScoreManager.Instance.ClearLocalSessions();
+
         if (MoneyManager.Instance != null)
             MoneyManager.Instance.ResetSession();
         if (InfiniteRunnerMovement.Instance != null)

@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 namespace JSG.FortuneSpinWheel
 {
@@ -27,6 +28,7 @@ namespace JSG.FortuneSpinWheel
         [HideInInspector]
         public int m_RewardNumber = -1;
         private AudioSource m_audioSource;
+        [SerializeField] private InputActionReference mashAction;
 
         // Start is called before the first frame update
         void Start()
@@ -53,7 +55,12 @@ namespace JSG.FortuneSpinWheel
         // Update is called once per frame
         void Update()
         {
-            if (m_IsSpinning)
+            if (mashAction != null && mashAction.action.WasPressedThisFrame())
+            {
+                StartSpin();
+            }
+
+                if (m_IsSpinning)
             {
                 m_RewardPanel.gameObject.SetActive(false);
                 if (m_SpinSpeed > 2)
@@ -145,6 +152,17 @@ namespace JSG.FortuneSpinWheel
             m_RewardNumber = -1;
             m_SpinButton.gameObject.SetActive(true);
             m_RewardPanel.gameObject.SetActive(false);
+        }
+        void OnEnable()
+        {
+            if (mashAction != null)
+                mashAction.action.Enable();
+        }
+
+        void OnDisable()
+        {
+            if (mashAction != null)
+                mashAction.action.Disable();
         }
     }
 }

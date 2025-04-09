@@ -44,6 +44,10 @@ public class InfiniteRunnerMovement : MonoBehaviour
     [SerializeField] float minSwipeDistance = 100f;
     [Tooltip("Force applied when swiping down (slam move).")]
     [SerializeField] float downForce = 10f;
+    [SerializeField] float coyoteTime = 0.2f;
+    float coyoteTimer = 0f;
+    bool hasJumped = false;
+    bool wasGroundedLastFrame = false;
 
     Rigidbody rb;
     Vector2 moveInput;
@@ -56,6 +60,7 @@ public class InfiniteRunnerMovement : MonoBehaviour
     Vector2 touchStartPos;
     [SerializeField] private ChaseScript chaserScript;
     bool gameOver = false;
+    [SerializeField] InputActionReference slamAction;
 
     public float HorizontalInput
     {
@@ -88,23 +93,39 @@ public class InfiniteRunnerMovement : MonoBehaviour
     {
         animController = GameObject.FindGameObjectWithTag("PlayerAnim").GetComponent<PlayerAnimatorController>();
     }
+    private void Slam()
+    {
+        rb.AddForce(-transform.up * downForce, ForceMode.Impulse);
+
+        if (audioSource != null)
+            audioSource.Play();
+    }
 
     void Update()
     {
         if (gameOver) return;
+        if (!isGrounded)
+            coyoteTimer -= Time.deltaTime;
+
 
         CheckGround();
         UpdateForwardSpeedOverTime();
 
 #if UNITY_ANDROID && !UNITY_EDITOR || UNITY_IOS && !UNITY_EDITOR
-        HandleSwipeJump();
+    HandleSwipeJump();
+#else
+        if (slamAction.action.WasPressedThisFrame())
+        {
+            Slam();
+        }
 #endif
     }
+
     void FixedUpdate()
     {
         if (gameOver) return;
 
-#if !UNITY_ANDROID || !UNITY_IOS || UNITY_EDITOR
+#if !UNITY_ANDROID && !UNITY_IOS || UNITY_EDITOR
         Move(HorizontalInput);
         ApplyPlayerTurning(HorizontalInput);
 #else
@@ -158,7 +179,7 @@ public class InfiniteRunnerMovement : MonoBehaviour
                 float swipeY = end.y - touchStartPos.y;
 
                 // Swipe up = Jump
-                if (swipeY > minSwipeDistance && isGrounded)
+                if (swipeY > minSwipeDistance && CanJump())
                 {
                     rb.AddForce(transform.up * jumpForce, ForceMode.Impulse);
                     if (audioSource != null)
@@ -168,12 +189,16 @@ public class InfiniteRunnerMovement : MonoBehaviour
                     {
                         chaserScript.Jump();
                     }
+                    hasJumped = true;
+                    ResetCoyote();
+
                 }
 
                 // Swipe down = Slam
                 else if (swipeY < -minSwipeDistance)
                 {
                     rb.AddForce(-transform.up * downForce, ForceMode.Impulse);
+             
                 }
             }
         }
@@ -181,12 +206,15 @@ public class InfiniteRunnerMovement : MonoBehaviour
     public void SetGameOver(bool state) => gameOver = state;
     public bool IsGameOver() => gameOver;
 
+
     void CheckGround()
     {
         Collider[] colliders = new Collider[3];
         int hitCount = Physics.OverlapSphereNonAlloc(groundCheck.position, groundChecker.radius, colliders, groundLayer);
+
         isGrounded = false;
         animController?.SetGroundedState(false);
+
         for (int i = 0; i < hitCount; i++)
         {
             if (colliders[i] != null && colliders[i].gameObject != gameObject)
@@ -198,9 +226,18 @@ public class InfiniteRunnerMovement : MonoBehaviour
                 break;
             }
         }
+
+        // Only reset hasJumped if we weren't grounded last frame and now are
+        if (isGrounded && !wasGroundedLastFrame)
+        {
+            hasJumped = false;
+            coyoteTimer = coyoteTime;
+        }
+
+        // Coyote timer decreases only when falling
         if (!isGrounded)
         {
-            // If we are not grounded => falling
+            coyoteTimer -= Time.deltaTime;
             if (chaserScript != null)
                 chaserScript.SetFalling(true);
         }
@@ -209,7 +246,10 @@ public class InfiniteRunnerMovement : MonoBehaviour
             if (chaserScript != null)
                 chaserScript.SetFalling(false);
         }
+
+        wasGroundedLastFrame = isGrounded;
     }
+
 
     void AlignToGround(Vector3 groundNormal)
     {
@@ -253,24 +293,31 @@ public class InfiniteRunnerMovement : MonoBehaviour
 
     public void OnMove(InputAction.CallbackContext context)
     {
-#if !UNITY_ANDROID || UNITY_EDITOR || !UNITY_IOS
+#if !UNITY_ANDROID && !UNITY_IOS || UNITY_EDITOR
         moveInput = context.ReadValue<Vector2>();
 #endif
     }
 
+    private bool CanJump() => coyoteTimer > 0f && !hasJumped;
+
     public void OnJump(InputAction.CallbackContext context)
     {
-        if (context.performed && isGrounded)
+        if (context.performed && CanJump())
         {
             rb.AddForce(transform.up * jumpForce, ForceMode.Impulse);
             if (audioSource != null)
                 audioSource.Play();
-            // Make the chaser jump too
             if (chaserScript != null)
-            {
                 chaserScript.Jump();
-            }
+
+            hasJumped = true;     
+            ResetCoyote();
         }
+    }
+
+    private void ResetCoyote()
+    {
+        coyoteTimer = 0f;
     }
 
     void OnDrawGizmos()
@@ -289,10 +336,14 @@ public class InfiniteRunnerMovement : MonoBehaviour
     void OnEnable()
     {
         tiltAction.Enable();
+        slamAction.action.Enable();
+
     }
 
     void OnDisable()
     {
         tiltAction.Disable();
+        slamAction.action.Disable();
+
     }
 }

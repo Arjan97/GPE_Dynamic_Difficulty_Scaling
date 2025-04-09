@@ -42,6 +42,19 @@ public class LeaderboardManager : MonoBehaviour
             Debug.LogError("LeaderboardManager: Failed to submit score: " + e.Message);
         }
     }
+    public async Task<int> GetMyBestScoreAsync()
+    {
+        try
+        {
+            var scoreResponse = await LeaderboardsService.Instance.GetPlayerScoreAsync(leaderboardId);
+            return (int)scoreResponse.Score;
+        }
+        catch (Exception e)
+        {
+            Debug.LogError("LeaderboardManager: Failed to fetch player's best score: " + e.Message);
+            return 0;
+        }
+    }
 
     /// <summary>
     /// Fetches the top leaderboard entries.
