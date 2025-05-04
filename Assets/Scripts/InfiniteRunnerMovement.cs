@@ -16,13 +16,13 @@ public class InfiniteRunnerMovement : MonoBehaviour
 
     [Header("Movement Settings")]
     public float forwardSpeed = 5f;
-    public float rotatingSpeed = 5f;
+    public float rotatingSpeed = 5f; // Updated over time
     public float matchPlaneRotationSpeed = 10f;
 
     [Header("Player Turning")]
-    [SerializeField] float defaultYaw = 90f;   // Default Y rotation (facing forward)
-    [SerializeField] float turnOffset = 20f;   // How many degrees to offset on full input
-    [SerializeField] float turnSpeed = 10f;      // Speed to interpolate to the target
+    [SerializeField] float defaultYaw = 90f;      // Default Y rotation (facing forward)
+    [SerializeField] float turnOffset = 20f;      // How many degrees to offset on full input
+    [SerializeField] float turnSpeed = 10f;       // Speed to interpolate to the target
 
     [Header("Speed Scaling Over Time")]
     [SerializeField] float minForwardSpeed = 30f;
@@ -30,12 +30,20 @@ public class InfiniteRunnerMovement : MonoBehaviour
     [SerializeField] float accelerationDuration = 90f;
     float playTime = 0f;
 
+    [Header("Rotation Speed Scaling")]
+    [SerializeField] float minRotatingSpeed = 5f;
+    [SerializeField] float maxRotatingSpeed = 15f;
 
     [Header("Tilt Controls (Mobile)")]
     public float tiltSensitivity = 2f;
     [SerializeField] float tiltDeadzone = 0.1f;
     [SerializeField] InputAction tiltAction;
     [SerializeField] float mobileRotationMultiplier = 2f;
+
+    [Header("Joystick Movement Action")]
+    // This is the separate action for joystick movement. Set this in your inspector to the "Move" action
+    // on your "Joystick" action map.
+    [SerializeField] InputActionReference joystickMoveActionRef;
 
     [Header("Jump Settings")]
     public float jumpForce = 7f;
@@ -50,168 +58,179 @@ public class InfiniteRunnerMovement : MonoBehaviour
     bool wasGroundedLastFrame = false;
 
     Rigidbody rb;
-    Vector2 moveInput;
-    float tiltInput;
+    // This value comes from the joystick move action.
+    Vector2 moveInput = Vector2.zero;
+    float tiltInput = 0f;
     bool isGrounded;
     SphereCollider groundChecker;
     Transform lastGroundHit;
     PlayerAnimatorController animController;
-    private AudioSource audioSource;
+    AudioSource audioSource;
     Vector2 touchStartPos;
     [SerializeField] private ChaseScript chaserScript;
     bool gameOver = false;
     [SerializeField] InputActionReference slamAction;
 
+    float _horizontalInput = 0f;
+    // Track the touch id used by the joystick (from the separate action).
+    int joystickTouchId = -1;
+
+    // The HorizontalInput property now depends solely on moveInput updated via the joystick action
     public float HorizontalInput
     {
         get
         {
-#if UNITY_ANDROID && !UNITY_EDITOR || UNITY_IOS && !UNITY_EDITOR
-            return tiltInput;
-#else
-            return moveInput.x;
-#endif
+            if (Application.isMobilePlatform)
+            {
+                return SettingsManager.Instance.JoystickEnabled ? moveInput.x : tiltInput;
+            }
+            else
+            {
+                return moveInput.x;
+            }
         }
     }
 
     void Awake()
     {
-#if UNITY_ANDROID && !UNITY_EDITOR || UNITY_IOS && !UNITY_EDITOR
-        if (Accelerometer.current != null && !Accelerometer.current.enabled)
-            InputSystem.EnableDevice(Accelerometer.current);
-        EnhancedTouchSupport.Enable();
-#endif
+        if (Application.isMobilePlatform)
+        {
+            if (Accelerometer.current != null && !Accelerometer.current.enabled)
+                InputSystem.EnableDevice(Accelerometer.current);
+            EnhancedTouchSupport.Enable();
+        }
         Instance = this;
         rb = GetComponent<Rigidbody>();
         rb.freezeRotation = true;
         groundChecker = groundCheck.GetComponent<SphereCollider>();
-        if (audioSource == null)
-            audioSource = GetComponent<AudioSource>();
+        audioSource = GetComponent<AudioSource>();
     }
 
     void Start()
     {
         animController = GameObject.FindGameObjectWithTag("PlayerAnim").GetComponent<PlayerAnimatorController>();
+
+        // Enable and subscribe to the joystick movement action in its own action map.
+        if (joystickMoveActionRef != null)
+        {
+            joystickMoveActionRef.action.performed += OnJoystickMove;
+            joystickMoveActionRef.action.canceled += OnJoystickMoveCanceled;
+            joystickMoveActionRef.action.Enable();
+        }
     }
+
+    private void OnDestroy()
+    {
+        if (joystickMoveActionRef != null)
+        {
+            joystickMoveActionRef.action.performed -= OnJoystickMove;
+            joystickMoveActionRef.action.canceled -= OnJoystickMoveCanceled;
+        }
+    }
+
+    // This callback updates moveInput independently from swipe.
+    private void OnJoystickMove(InputAction.CallbackContext context)
+    {
+        // Update the joystick move input directly.
+        moveInput = context.ReadValue<Vector2>();
+
+        // Optionally, record the touch id if it's a touch-based control.
+        // For simplicity, assume the first active touch is the joystick.
+        var touches = Touch.activeTouches;
+        if (touches.Count > 0)
+            joystickTouchId = touches[0].touchId;
+    }
+
+    private void OnJoystickMoveCanceled(InputAction.CallbackContext context)
+    {
+        moveInput = Vector2.zero;
+        joystickTouchId = -1;
+    }
+
     private void Slam()
     {
         rb.AddForce(-transform.up * downForce, ForceMode.Impulse);
-
-        if (audioSource != null)
-            audioSource.Play();
     }
 
     void Update()
     {
-        if (gameOver) return;
-        if (!isGrounded)
-            coyoteTimer -= Time.deltaTime;
+        if (gameOver)
+            return;
 
+        UpdateSpeedOverTime();
 
+        // Capture previous grounded state
+        bool wasGroundedPreviously = isGrounded;
         CheckGround();
-        UpdateForwardSpeedOverTime();
 
-#if UNITY_ANDROID && !UNITY_EDITOR || UNITY_IOS && !UNITY_EDITOR
-    HandleSwipeJump();
-#else
-        if (slamAction.action.WasPressedThisFrame())
+        if (!isGrounded)
+            coyoteTimer = Mathf.Max(coyoteTimer - Time.deltaTime, 0f);
+
+        // If just landed, reset jump flag.
+        if (isGrounded && !wasGroundedPreviously)
         {
-            Slam();
+            hasJumped = false;
+            coyoteTimer = coyoteTime;
         }
-#endif
+
+        float targetHorizontal = 0f;
+
+        // For mobile, if joystick is disabled, fallback to tilt controls.
+        if (Application.isMobilePlatform)
+        {
+            HandleSwipeJump();
+            if (SettingsManager.Instance.JoystickEnabled)
+            {
+                targetHorizontal = moveInput.x;
+            }
+            else
+            {
+                Vector3 tilt = tiltAction.ReadValue<Vector3>();
+                float rawTilt = tilt.x * tiltSensitivity;
+                targetHorizontal = (Mathf.Abs(rawTilt) > tiltDeadzone) ? Mathf.Clamp(rawTilt, -1f, 1f) : 0f;
+                tiltInput = targetHorizontal;
+            }
+        }
+        else
+        {
+            targetHorizontal = moveInput.x;
+            if (slamAction.action.WasPressedThisFrame())
+                Slam();
+        }
+
+        _horizontalInput = targetHorizontal;
     }
 
     void FixedUpdate()
     {
-        if (gameOver) return;
-
-#if !UNITY_ANDROID && !UNITY_IOS || UNITY_EDITOR
-        Move(HorizontalInput);
-        ApplyPlayerTurning(HorizontalInput);
-#else
-    Vector3 tilt = tiltAction.ReadValue<Vector3>();
-    float rawInput = tilt.x * tiltSensitivity;
-    float horizontal = Mathf.Abs(rawInput) > tiltDeadzone ? Mathf.Clamp(rawInput, -1f, 1f) : 0f;
-
-    tiltInput = horizontal;
-    Move(horizontal);
-    ApplyPlayerTurning(horizontal);
-#endif
-    }
-
-    void UpdateForwardSpeedOverTime()
-    {
-        playTime += Time.deltaTime;
-        float t = Mathf.Clamp01(playTime / accelerationDuration);
-        forwardSpeed = Mathf.Lerp(minForwardSpeed, maxForwardSpeed, t);
-    }
-    void ApplyPlayerTurning(float horizontalInput)
-    {
-        // Calculate target yaw based on input.
-        // For horizontalInput of -1, targetYaw = 90 - 20 = 70.
-        // For horizontalInput of  0, targetYaw = 90.
-        // For horizontalInput of  1, targetYaw = 90 + 20 = 110.
-        float targetYaw = defaultYaw + horizontalInput * turnOffset;
-
-        // Get the current local Y rotation.
-        float currentYaw = transform.localEulerAngles.y;
-        // Use LerpAngle to smoothly interpolate and handle wrap-around (0°/360°).
-        float newYaw = Mathf.LerpAngle(currentYaw, targetYaw, Time.deltaTime * turnSpeed);
-
-        // Apply the new yaw while preserving the current X and Z rotations.
-        Vector3 newEuler = new Vector3(transform.localEulerAngles.x, newYaw, transform.localEulerAngles.z);
-        transform.localRotation = Quaternion.Euler(newEuler);
-    }
-    void HandleSwipeJump()
-    {
-        if (Touch.activeTouches.Count == 0)
+        if (gameOver)
             return;
 
-        foreach (var touch in Touch.activeTouches)
-        {
-            if (touch.phase == UnityEngine.InputSystem.TouchPhase.Began)
-            {
-                touchStartPos = touch.screenPosition;
-            }
-            else if (touch.phase == UnityEngine.InputSystem.TouchPhase.Ended)
-            {
-                Vector2 end = touch.screenPosition;
-                float swipeY = end.y - touchStartPos.y;
-
-                // Swipe up = Jump
-                if (swipeY > minSwipeDistance && CanJump())
-                {
-                    rb.AddForce(transform.up * jumpForce, ForceMode.Impulse);
-                    if (audioSource != null)
-                        audioSource.Play();
-                    // Make the chaser jump too
-                    if (chaserScript != null)
-                    {
-                        chaserScript.Jump();
-                    }
-                    hasJumped = true;
-                    ResetCoyote();
-
-                }
-
-                // Swipe down = Slam
-                else if (swipeY < -minSwipeDistance)
-                {
-                    rb.AddForce(-transform.up * downForce, ForceMode.Impulse);
-             
-                }
-            }
-        }
+        Move(_horizontalInput);
+        ApplyPlayerTurning(_horizontalInput);
     }
-    public void SetGameOver(bool state) => gameOver = state;
-    public bool IsGameOver() => gameOver;
 
+    void TriggerJump()
+    {
+        if (!CanJump())
+            return;
+
+        rb.AddForce(transform.up * jumpForce, ForceMode.Impulse);
+        hasJumped = true;
+        ResetCoyote();
+
+        if (audioSource != null)
+            audioSource.Play();
+        if (chaserScript != null)
+            chaserScript.Jump();
+    }
 
     void CheckGround()
     {
         Collider[] colliders = new Collider[3];
         int hitCount = Physics.OverlapSphereNonAlloc(groundCheck.position, groundChecker.radius, colliders, groundLayer);
 
+        bool previousGroundedState = isGrounded;
         isGrounded = false;
         animController?.SetGroundedState(false);
 
@@ -227,54 +246,44 @@ public class InfiniteRunnerMovement : MonoBehaviour
             }
         }
 
-        // Only reset hasJumped if we weren't grounded last frame and now are
-        if (isGrounded && !wasGroundedLastFrame)
+        if (isGrounded)
         {
-            hasJumped = false;
             coyoteTimer = coyoteTime;
-        }
-
-        // Coyote timer decreases only when falling
-        if (!isGrounded)
-        {
-            coyoteTimer -= Time.deltaTime;
-            if (chaserScript != null)
-                chaserScript.SetFalling(true);
+            if (!previousGroundedState)
+                hasJumped = false;
+            chaserScript?.SetFalling(false);
         }
         else
         {
-            if (chaserScript != null)
-                chaserScript.SetFalling(false);
+            chaserScript?.SetFalling(true);
         }
-
-        wasGroundedLastFrame = isGrounded;
     }
 
-
-    void AlignToGround(Vector3 groundNormal)
+    void UpdateSpeedOverTime()
     {
-        Quaternion upAlignedRotation = Quaternion.FromToRotation(transform.up, groundNormal) * transform.rotation;
-        float targetZRotation = lastGroundHit != null ? lastGroundHit.eulerAngles.z : transform.eulerAngles.z;
-        Vector3 targetEuler = upAlignedRotation.eulerAngles;
-        targetEuler.z = Mathf.LerpAngle(transform.eulerAngles.z, targetZRotation, matchPlaneRotationSpeed * Time.deltaTime);
-        Quaternion targetRotation = Quaternion.Euler(targetEuler);
-        transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, matchPlaneRotationSpeed * Time.deltaTime);
+        playTime += Time.deltaTime;
+        float t = Mathf.Clamp01(playTime / accelerationDuration);
+        forwardSpeed = Mathf.Lerp(minForwardSpeed, maxForwardSpeed, t);
+        rotatingSpeed = Mathf.Lerp(minRotatingSpeed, maxRotatingSpeed, t);
     }
 
-    public void SetForwardSpeed(float speed) { forwardSpeed = speed; }
-    public void SetRotatingSpeed(float speed) { rotatingSpeed = speed; }
+    void ApplyPlayerTurning(float horizontalInput)
+    {
+        float targetYaw = defaultYaw + horizontalInput * turnOffset;
+        float currentYaw = transform.localEulerAngles.y;
+        float newYaw = Mathf.LerpAngle(currentYaw, targetYaw, Time.deltaTime * turnSpeed);
+        Vector3 newEuler = new Vector3(transform.localEulerAngles.x, newYaw, transform.localEulerAngles.z);
+        transform.localRotation = Quaternion.Euler(newEuler);
+    }
 
-    public void Move(float horizontalInput)
+    void Move(float horizontalInput)
     {
         GameObject[] tunnels = GameObject.FindGameObjectsWithTag("Center");
         if (tunnels != null && tunnels.Length > 0)
         {
             float rotationBoost = 1f;
-
-#if UNITY_ANDROID && !UNITY_EDITOR || UNITY_IOS && !UNITY_EDITOR
-            // Use mobile rotation multiplier for mobile devices
-    rotationBoost = mobileRotationMultiplier;
-#endif
+            if (Application.isMobilePlatform)
+                rotationBoost = mobileRotationMultiplier;
 
             float rotationAmount = -horizontalInput * rotatingSpeed * rotationBoost * Time.deltaTime;
             foreach (GameObject tunnel in tunnels)
@@ -290,34 +299,86 @@ public class InfiniteRunnerMovement : MonoBehaviour
             camRotator.transform.Rotate(0, 0, -horizontalInput * rotatingSpeed * Time.deltaTime);
         }
     }
+    void OnCollisionEnter(Collision col)
+    {
+        if (((1 << col.gameObject.layer) & groundLayer) != 0)
+        {
+            hasJumped = false;
+            coyoteTimer = coyoteTime;
+        }
+    }
 
+
+    // The OnMove function is no longer used for the joystick because we use the separate action callback.
+    // However, you might keep it if you want fallback behavior.
     public void OnMove(InputAction.CallbackContext context)
     {
-#if !UNITY_ANDROID && !UNITY_IOS || UNITY_EDITOR
         moveInput = context.ReadValue<Vector2>();
-#endif
     }
 
     private bool CanJump() => coyoteTimer > 0f && !hasJumped;
 
     public void OnJump(InputAction.CallbackContext context)
     {
-        if (context.performed && CanJump())
-        {
-            rb.AddForce(transform.up * jumpForce, ForceMode.Impulse);
-            if (audioSource != null)
-                audioSource.Play();
-            if (chaserScript != null)
-                chaserScript.Jump();
-
-            hasJumped = true;     
-            ResetCoyote();
-        }
+        if (context.performed)
+            TriggerJump();
     }
 
     private void ResetCoyote()
     {
         coyoteTimer = 0f;
+    }
+
+    void HandleSwipeJump()
+    {
+        // Process Enhanced Touch for swipe gestures.
+        if (Touch.activeTouches.Count == 0)
+            return;
+
+        foreach (var touch in Touch.activeTouches)
+        {
+            // Ignore the touch used by the joystick.
+            if (touch.touchId == joystickTouchId)
+                continue;
+
+            if (touch.phase == UnityEngine.InputSystem.TouchPhase.Began)
+            {
+                touchStartPos = touch.screenPosition;
+            }
+            else if (touch.phase == UnityEngine.InputSystem.TouchPhase.Ended)
+            {
+                Vector2 end = touch.screenPosition;
+                float swipeY = end.y - touchStartPos.y;
+
+                if (swipeY > minSwipeDistance)
+                    TriggerJump();
+                else if (swipeY < -minSwipeDistance)
+                    rb.AddForce(-transform.up * downForce, ForceMode.Impulse);
+            }
+        }
+    }
+
+    public void SetGameOver(bool state) => gameOver = state;
+    public bool IsGameOver() => gameOver;
+
+    void AlignToGround(Vector3 groundNormal)
+    {
+        Quaternion upAlignedRotation = Quaternion.FromToRotation(transform.up, groundNormal) * transform.rotation;
+        float targetZRotation = lastGroundHit != null ? lastGroundHit.eulerAngles.z : transform.eulerAngles.z;
+        Vector3 targetEuler = upAlignedRotation.eulerAngles;
+        targetEuler.z = Mathf.LerpAngle(transform.eulerAngles.z, targetZRotation, matchPlaneRotationSpeed * Time.deltaTime);
+        Quaternion targetRotation = Quaternion.Euler(targetEuler);
+        transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, matchPlaneRotationSpeed * Time.deltaTime);
+    }
+
+    public void SetForwardSpeed(float speed)
+    {
+        forwardSpeed = speed;
+    }
+
+    public void SetRotatingSpeed(float speed)
+    {
+        rotatingSpeed = speed;
     }
 
     void OnDrawGizmos()
@@ -337,13 +398,19 @@ public class InfiniteRunnerMovement : MonoBehaviour
     {
         tiltAction.Enable();
         slamAction.action.Enable();
-
+        if (joystickMoveActionRef != null)
+        {
+            joystickMoveActionRef.action.Enable();
+        }
     }
 
     void OnDisable()
     {
         tiltAction.Disable();
         slamAction.action.Disable();
-
+        if (joystickMoveActionRef != null)
+        {
+            joystickMoveActionRef.action.Disable();
+        }
     }
 }

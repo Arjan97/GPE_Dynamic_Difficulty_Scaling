@@ -115,7 +115,7 @@ public class DDSManager : MonoBehaviour
         if (InfiniteRunnerMovement.Instance != null)
         {
             //InfiniteRunnerMovement.Instance.SetForwardSpeed(targetForwardSpeed);
-            InfiniteRunnerMovement.Instance.SetRotatingSpeed(targetRotatingSpeed);
+            //InfiniteRunnerMovement.Instance.SetRotatingSpeed(targetRotatingSpeed);
         }
     }
     /// <summary>

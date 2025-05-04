@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -23,15 +23,13 @@ namespace JSG.FortuneSpinWheel
         [HideInInspector]
         public float m_Rotation = 0;
 
-        public Image m_SpinButton;
-
         [HideInInspector]
         public int m_RewardNumber = -1;
         private AudioSource m_audioSource;
         [SerializeField] private InputActionReference mashAction;
-
-        // Start is called before the first frame update
-        void Start()
+        private bool hasSpun;
+        public event System.Action OnSpinStart;
+        public event System.Action<int /* rewardIndex */> OnSpinComplete; void Start()
         {
             m_Rotation = 0;
             m_IsSpinning = false;
@@ -52,10 +50,16 @@ namespace JSG.FortuneSpinWheel
             }
         }
 
+        private void Awake()
+        {
+            m_audioSource = GetComponent<AudioSource>();
+            if (m_audioSource == null)
+                m_audioSource = gameObject.AddComponent<AudioSource>();
+        }
         // Update is called once per frame
         void Update()
         {
-            if (mashAction != null && mashAction.action.WasPressedThisFrame())
+            if (mashAction != null && mashAction.action.WasPressedThisFrame() && !hasSpun)
             {
                 StartSpin();
             }
@@ -77,15 +81,15 @@ namespace JSG.FortuneSpinWheel
                 {
                     m_RewardPictures[i].transform.rotation = Quaternion.identity;
                 }
+                // when spin actually ends:
                 if (m_SpinSpeed <= 0)
                 {
-                    m_SpinSpeed = 0;
                     m_IsSpinning = false;
                     m_RewardNumber = (int)((m_Rotation % 360) / 60);
 
+                    OnSpinComplete?.Invoke(m_RewardNumber);  // ← fire spin-complete
                     StartCoroutine(ShowRewardMenu(0.5f));
                     HandleReward();
-
                 }
 
             }
@@ -135,22 +139,30 @@ namespace JSG.FortuneSpinWheel
 
         public void StartSpin()
         {
-            if (!m_IsSpinning)
-            {
-                m_SpinSpeed = Random.Range(4f, 14f);
-                m_IsSpinning = true;
-                m_RewardNumber = -1;
-                m_SpinButton.gameObject.SetActive(false);
-            }
+            if (m_IsSpinning)
+                return;
+
+            hasSpun = true;
+            OnSpinStart?.Invoke();                // ← fire spin-start
+            StartCoroutine(WaitForSeconds(5f));
+
+            m_SpinSpeed = Random.Range(4f, 14f);
+            m_IsSpinning = true;
+            m_RewardNumber = -1;
+            
         }
 
+    private IEnumerator WaitForSeconds(float seconds)
+        {
+            yield return new WaitForSeconds(seconds);
+            hasSpun = false;
+        }
         public void Reset()
         {
             m_Rotation = 0;
             m_CircleBase.transform.localRotation = Quaternion.identity;
             m_IsSpinning = false;
             m_RewardNumber = -1;
-            m_SpinButton.gameObject.SetActive(true);
             m_RewardPanel.gameObject.SetActive(false);
         }
         void OnEnable()

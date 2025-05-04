@@ -62,8 +62,11 @@ public class DebtPaymentOverlay : MonoBehaviour
     /// </summary>
     public void ShowOverlay()
     {
-        if (slotMachine != null && slotMachine.IsActive && !IsActive)
-            return; // Block if slot machine is open
+        if (overlayPanel.activeSelf)
+            return;
+
+        if (slotMachine != null && slotMachine.IsActive)
+            return;
 
         overlayPanel.SetActive(true);
         instructionText.text = "Mash the button!";
@@ -77,6 +80,7 @@ public class DebtPaymentOverlay : MonoBehaviour
         mashCount = 0;
         StartCoroutine(MashMiniGame());
     }
+
 
     public bool IsActive => overlayPanel.activeSelf;
 

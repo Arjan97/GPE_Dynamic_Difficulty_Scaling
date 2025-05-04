@@ -5,6 +5,7 @@ public class HelpPanelManager : MonoBehaviour
     [Header("Help Panels")]
     [SerializeField] private GameObject mobileHelpPanel;
     [SerializeField] private GameObject desktopHelpPanel;
+    [SerializeField] private GameObject toDisableBackdrop;
 
     private GameObject currentPanel;
 
@@ -21,6 +22,9 @@ public class HelpPanelManager : MonoBehaviour
 #endif
         if (currentPanel != null)
             currentPanel.SetActive(true);
+        if (toDisableBackdrop != null)
+            toDisableBackdrop.SetActive(false);
+        this.gameObject.SetActive(false);
     }
 
     /// <summary>
@@ -29,7 +33,10 @@ public class HelpPanelManager : MonoBehaviour
     /// </summary>
     public void HideHelpPanel()
     {
+        this.gameObject.SetActive(true);
         if (currentPanel != null)
             currentPanel.SetActive(false);
+        if (toDisableBackdrop != null)
+            toDisableBackdrop.SetActive(true);
     }
 }

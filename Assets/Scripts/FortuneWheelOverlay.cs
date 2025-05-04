@@ -1,81 +1,70 @@
-using System.Collections;
+using JSG.FortuneSpinWheel;
 using UnityEngine;
-using JSG.FortuneSpinWheel;  // Ensure you have the proper namespace for FortuneSpinWheel
-using UnityEngine.Audio;
-
+using System.Collections;
 public class FortuneWheelOverlay : MonoBehaviour
 {
-    [Tooltip("Reference to the Fortune Spin Wheel overlay GameObject.")]
-    [SerializeField] private GameObject fortuneWheelOverlayObject;
+    [SerializeField] GameObject overlayObject;
+    [SerializeField] float closeDelay = 1f;
+    FortuneSpinWheel wheel;
+    Coroutine _fallback;
 
-    [Tooltip("Delay (in seconds) after the reward panel is shown before hiding the overlay.")]
-    [SerializeField] private float closeDelay = 1f;
-
-    private FortuneSpinWheel fortuneSpinWheel;
-    private bool wheelShown = false;
-    private AudioSource audioSource;
-    private void Awake()
+    void Awake()
     {
-        // If no separate overlay object is assigned, assume the script is on it.
-        if (fortuneWheelOverlayObject == null)
-            fortuneWheelOverlayObject = gameObject;
+        if (overlayObject == null) overlayObject = gameObject;
+        wheel = overlayObject.GetComponent<FortuneSpinWheel>();
+        overlayObject.SetActive(false);
+    }
 
-        // Get the FortuneSpinWheel component from the overlay object.
-        fortuneSpinWheel = fortuneWheelOverlayObject.GetComponent<FortuneSpinWheel>();
-
-        // Ensure the overlay is disabled by default.
-        fortuneWheelOverlayObject.SetActive(false);
-        audioSource = GetComponent<AudioSource>();
-        if (audioSource == null)
+    void OnEnable()
+    {
+        if (wheel != null)
         {
-            audioSource = gameObject.AddComponent<AudioSource>();
+            wheel.OnSpinStart += Show;
+            wheel.OnSpinComplete += HideWithDelay;
         }
     }
 
-    /// <summary>
-    /// Enables the Fortune Spin Wheel overlay and starts a coroutine to close it after the reward panel is shown.
-    /// </summary>
-    public void ShowWheel()
+    void OnDisable()
     {
-        if (wheelShown)
+        if (wheel != null)
         {
-            return;
+            wheel.OnSpinStart -= Show;
+            wheel.OnSpinComplete -= HideWithDelay;
         }
-        // Enable the overlay.
-        fortuneWheelOverlayObject.SetActive(true);
-        // Play overlay open sound.
-        if (audioSource != null)
-        {
-            audioSource.Play();
-        }
-        wheelShown = true;
-        // Optionally reset the wheel if needed.
-        if (fortuneSpinWheel != null)
-        {
-            fortuneSpinWheel.Reset();
-            
-        }
-
-        // Start waiting for the reward panel to appear, then close the overlay.
-        StartCoroutine(WaitForRewardPanelAndClose());
     }
 
-    /// <summary>
-    /// Waits until the reward panel in the FortuneSpinWheel is active, then waits for a delay before hiding the overlay.
-    /// </summary>
-    private IEnumerator WaitForRewardPanelAndClose()
+    public void Show()
     {
-        // Wait until the reward panel is active.
-        while (fortuneSpinWheel != null && !fortuneSpinWheel.m_RewardPanel.activeSelf)
-        {
-            yield return null;
-        }
+        if (_fallback != null) StopCoroutine(_fallback);
+        if (wheel != null)
+            wheel.Reset();
+        overlayObject.SetActive(true);
+        _fallback = StartCoroutine(FallbackHide());
+    }
 
-        // Once active, wait for the specified delay.
-        yield return new WaitForSeconds(closeDelay);
+    void HideWithDelay(int rewardIndex)
+    {
+        if (_fallback != null) StopCoroutine(_fallback);
+        StartCoroutine(_HideAfter(closeDelay));
+    }
 
-        // Hide the overlay.
-        fortuneWheelOverlayObject.SetActive(false);
-        wheelShown = false;
+    IEnumerator _HideAfter(float t)
+    {
+        yield return new WaitForSeconds(t);
+        overlayObject.SetActive(false);
+
+        if (wheel != null)
+            wheel.Reset();
+
+        _fallback = null;
+    }
+
+
+    IEnumerator FallbackHide()
+    {
+        // hide no matter what after e.g. 10s
+        yield return new WaitForSeconds(10f);
+        overlayObject.SetActive(false);
+        _fallback = null;
     }
 }

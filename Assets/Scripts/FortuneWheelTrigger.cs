@@ -17,7 +17,7 @@ public class FortuneWheelTrigger : MonoBehaviour
             if (wheel != null)
             {
                 // Toggle the Fortune Wheel overlay on.
-                wheel.ShowWheel();
+                wheel.Show();
             }
         }
     }

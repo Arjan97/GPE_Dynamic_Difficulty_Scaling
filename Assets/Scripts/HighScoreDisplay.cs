@@ -33,7 +33,7 @@ public class HighScoreDisplay : MonoBehaviour
         List<LeaderboardEntry> entries = new List<LeaderboardEntry>();
         try
         {
-            var scoresResponse = await LeaderboardsService.Instance.GetScoresAsync("GambleRun", new GetScoresOptions { Limit = 5 });
+            var scoresResponse = await LeaderboardsService.Instance.GetScoresAsync("GambleRun", new GetScoresOptions { Limit = 15 });
             entries = scoresResponse.Results;
         }
         catch (Exception e)

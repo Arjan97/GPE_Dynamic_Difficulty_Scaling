@@ -1,0 +1,34 @@
+{
+    "name": "Joystick",
+    "maps": [
+        {
+            "name": "Joystick",
+            "id": "43f7969a-90e9-40c6-826b-9f463da4cc59",
+            "actions": [
+                {
+                    "name": "JoystickMove",
+                    "type": "PassThrough",
+                    "id": "3e79e621-6e1b-4ad2-8b0c-b492c79b0dab",
+                    "expectedControlType": "Vector2",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                }
+            ],
+            "bindings": [
+                {
+                    "name": "",
+                    "id": "b771d2af-a814-4f81-b5c4-7acd1eaffc59",
+                    "path": "<Gamepad>/leftStick",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "JoystickMove",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                }
+            ]
+        }
+    ],
+    "controlSchemes": []
+}
